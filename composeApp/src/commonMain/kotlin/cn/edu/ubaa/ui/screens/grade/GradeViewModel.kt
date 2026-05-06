@@ -12,9 +12,29 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class GradeViewModel(
-    private val gradeApi: GradeApi = GradeApi(),
-    private val termRepository: TermRepository = GlobalTermRepository.instance,
+internal interface GradeDataSource {
+  suspend fun getGrades(termCode: String): Result<GradeData>
+}
+
+internal interface GradeTermsSource {
+  suspend fun getTerms(forceRefresh: Boolean): Result<List<Term>>
+}
+
+private class ApiGradeDataSource(private val gradeApi: GradeApi = GradeApi()) : GradeDataSource {
+  override suspend fun getGrades(termCode: String): Result<GradeData> = gradeApi.getGrades(termCode)
+}
+
+private class RepositoryGradeTermsSource(
+    private val termRepository: TermRepository = GlobalTermRepository.instance
+) : GradeTermsSource {
+  override suspend fun getTerms(forceRefresh: Boolean): Result<List<Term>> =
+      termRepository.getTerms(forceRefresh)
+}
+
+class GradeViewModel
+internal constructor(
+    private val gradeSource: GradeDataSource = ApiGradeDataSource(),
+    private val termsSource: GradeTermsSource = RepositoryGradeTermsSource(),
 ) : ViewModel() {
   private var loadedOnce = false
 
@@ -29,35 +49,41 @@ class GradeViewModel(
   fun loadTerms(forceRefresh: Boolean = false) {
     loadedOnce = true
     viewModelScope.launch {
+      val hasExistingContent = _uiState.value.gradeData != null
       _uiState.value =
           _uiState.value.copy(
-              isLoading = true,
+              isLoading = !hasExistingContent,
+              isRefreshing = forceRefresh && hasExistingContent,
               isSummaryLoading = false,
-              gradeData = null,
-              termGrades = emptyMap(),
+              gradeData = if (hasExistingContent) _uiState.value.gradeData else null,
+              termGrades = if (hasExistingContent) _uiState.value.termGrades else emptyMap(),
               error = null,
           )
 
-      termRepository
+      termsSource
           .getTerms(forceRefresh)
           .onSuccess { terms ->
             val selectedTerm = terms.find { it.selected } ?: terms.firstOrNull()
             _uiState.value =
                 _uiState.value.copy(
-                    isLoading = selectedTerm != null,
+                    isLoading = selectedTerm != null && _uiState.value.gradeData == null,
                     terms = terms,
                     selectedTerm = selectedTerm,
                     error = null,
                 )
             if (selectedTerm == null) {
-              _uiState.value = _uiState.value.copy(isLoading = false)
+              _uiState.value = _uiState.value.copy(isLoading = false, isRefreshing = false)
             } else {
               loadAllGrades(terms, selectedTerm)
             }
           }
           .onFailure { exception ->
             _uiState.value =
-                _uiState.value.copy(isLoading = false, error = exception.message ?: "加载学期信息失败")
+                _uiState.value.copy(
+                    isLoading = false,
+                    isRefreshing = false,
+                    error = exception.message ?: "加载学期信息失败",
+                )
           }
     }
   }
@@ -84,7 +110,7 @@ class GradeViewModel(
         listOf(selectedTerm) + terms.filterNot { it.itemCode == selectedTerm.itemCode }
 
     orderedTerms.forEachIndexed { index, term ->
-      gradeApi
+      gradeSource
           .getGrades(term.itemCode)
           .onSuccess { gradeData ->
             val updatedTermGrades = _uiState.value.termGrades + (term.itemCode to gradeData)
@@ -92,6 +118,7 @@ class GradeViewModel(
             _uiState.value =
                 _uiState.value.copy(
                     isLoading = if (isSelectedTerm) false else _uiState.value.isLoading,
+                    isRefreshing = false,
                     isSummaryLoading = index < orderedTerms.lastIndex,
                     gradeData = if (isSelectedTerm) gradeData else _uiState.value.gradeData,
                     termGrades = updatedTermGrades,
@@ -104,23 +131,24 @@ class GradeViewModel(
                 if (isSelectedTerm) {
                   _uiState.value.copy(
                       isLoading = false,
+                      isRefreshing = false,
                       isSummaryLoading = false,
                       error = exception.message ?: "加载成绩信息失败",
                   )
                 } else {
-                  _uiState.value.copy(isSummaryLoading = false)
+                  _uiState.value.copy(isRefreshing = false, isSummaryLoading = false)
                 }
             return
           }
     }
-    _uiState.value = _uiState.value.copy(isSummaryLoading = false)
+    _uiState.value = _uiState.value.copy(isRefreshing = false, isSummaryLoading = false)
   }
 
   private fun loadGrades(termCode: String) {
     viewModelScope.launch {
       _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
-      gradeApi
+      gradeSource
           .getGrades(termCode)
           .onSuccess { gradeData ->
             _uiState.value =
@@ -141,6 +169,7 @@ class GradeViewModel(
 
 data class GradeUiState(
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val isSummaryLoading: Boolean = false,
     val terms: List<Term> = emptyList(),
     val selectedTerm: Term? = null,

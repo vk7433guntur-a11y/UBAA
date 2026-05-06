@@ -136,9 +136,11 @@ private fun buildSpocTodoItems(
     now: LocalDateTime,
 ): List<HomeTodoItem> =
     assignments.mapNotNull { assignment ->
+      val startTime = parseHomeDateTime(assignment.startTime)
       val dueTime = parseHomeDateTime(assignment.dueTime)
       if (
           assignment.submissionStatus != SpocSubmissionStatus.UNSUBMITTED ||
+              startTime?.let { it > now } == true ||
               dueTime == null ||
               dueTime <= now
       ) {

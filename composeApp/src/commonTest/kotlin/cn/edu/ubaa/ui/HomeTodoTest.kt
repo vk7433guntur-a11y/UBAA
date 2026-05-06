@@ -210,6 +210,44 @@ class HomeTodoTest {
   }
 
   @Test
+  fun `spoc todo items hide assignments that have not started`() {
+    val items =
+        buildHomeTodoItems(
+            bykcCourses = emptyList(),
+            spocAssignments =
+                listOf(
+                    SpocAssignmentSummaryDto(
+                        assignmentId = "spoc-started",
+                        courseId = "course-1",
+                        courseName = "算法设计",
+                        title = "已开始作业",
+                        startTime = "2026-03-24 11:00:00",
+                        dueTime = "2026-03-24 13:00:00",
+                        submissionStatus = SpocSubmissionStatus.UNSUBMITTED,
+                        submissionStatusText = "未提交",
+                    ),
+                    SpocAssignmentSummaryDto(
+                        assignmentId = "spoc-future",
+                        courseId = "course-2",
+                        courseName = "编译原理",
+                        title = "未开始作业",
+                        startTime = "2026-03-24 12:30:00",
+                        dueTime = "2026-03-24 14:00:00",
+                        submissionStatus = SpocSubmissionStatus.UNSUBMITTED,
+                        submissionStatusText = "未提交",
+                    ),
+                ),
+            judgeAssignments = emptyList(),
+            cgyyOrders = emptyList(),
+            signinClasses = emptyList(),
+            now = NOW,
+            timeZone = TimeZone.UTC,
+        )
+
+    assertEquals(listOf("spoc:spoc-started"), items.map { it.id })
+  }
+
+  @Test
   fun `parseHomeDateTime supports full datetime and time only`() {
     assertEquals(
         LocalDateTime.parse("2026-03-24T14:30:00"),

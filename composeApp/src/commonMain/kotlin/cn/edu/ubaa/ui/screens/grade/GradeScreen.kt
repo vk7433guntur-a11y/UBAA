@@ -13,10 +13,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Grade
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,11 +37,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.model.dto.Grade
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun GradeScreen(viewModel: GradeViewModel) {
   val uiState by viewModel.uiState.collectAsState()
+  val pullRefreshState =
+      rememberPullRefreshState(
+          refreshing = uiState.isRefreshing,
+          onRefresh = { viewModel.ensureLoaded(forceRefresh = true) },
+      )
 
-  Box(modifier = Modifier.fillMaxSize()) {
+  Box(modifier = Modifier.fillMaxSize().pullRefresh(pullRefreshState)) {
     when {
       uiState.isLoading -> {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -56,6 +66,11 @@ fun GradeScreen(viewModel: GradeViewModel) {
               isSummaryLoading = uiState.isSummaryLoading,
           )
     }
+    PullRefreshIndicator(
+        refreshing = uiState.isRefreshing,
+        state = pullRefreshState,
+        modifier = Modifier.align(Alignment.TopCenter),
+    )
   }
 }
 
