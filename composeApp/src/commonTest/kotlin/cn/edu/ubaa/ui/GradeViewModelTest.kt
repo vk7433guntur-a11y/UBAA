@@ -70,6 +70,30 @@ class GradeViewModelTest {
     assertEquals(listOf(false, true), termsSource.forceRefreshRequests)
   }
 
+  @Test
+  fun `loads all term grades concurrently`() = runTest {
+    setMainDispatcher(testScheduler)
+    val terms =
+        listOf(
+            sampleTerm("2025-2026-1", selected = true),
+            sampleTerm("2024-2025-2"),
+            sampleTerm("2024-2025-1"),
+        )
+    val gradeSource = ConcurrentTrackingGradeDataSource(terms.map { it.itemCode }.toSet())
+    val viewModel =
+        GradeViewModel(gradeSource = gradeSource, termsSource = FakeGradeTermsSource(terms))
+
+    viewModel.ensureLoaded()
+    runCurrent()
+
+    assertEquals(3, gradeSource.maxConcurrentRequests)
+
+    advanceUntilIdle()
+
+    assertEquals(terms.map { it.itemCode }.toSet(), viewModel.uiState.value.termGrades.keys)
+    assertFalse(viewModel.uiState.value.isSummaryLoading)
+  }
+
   private fun setMainDispatcher(testScheduler: TestCoroutineScheduler) {
     Dispatchers.setMain(StandardTestDispatcher(testScheduler))
   }
@@ -94,10 +118,29 @@ private class FakeGradeDataSource(
   }
 }
 
-private fun sampleTerm(): Term =
+private class ConcurrentTrackingGradeDataSource(private val expectedTermCodes: Set<String>) :
+    GradeDataSource {
+  private var activeRequests = 0
+  var maxConcurrentRequests = 0
+    private set
+
+  override suspend fun getGrades(termCode: String): Result<GradeData> {
+    require(termCode in expectedTermCodes)
+    activeRequests += 1
+    maxConcurrentRequests = maxOf(maxConcurrentRequests, activeRequests)
+    delay(100)
+    activeRequests -= 1
+    return Result.success(GradeData(termCode = termCode, grades = emptyList()))
+  }
+}
+
+private fun sampleTerm(
+    itemCode: String = "2025-2026-1",
+    selected: Boolean = true,
+): Term =
     Term(
-        itemCode = "2025-2026-1",
-        itemName = "2025-2026学年第一学期",
-        selected = true,
+        itemCode = itemCode,
+        itemName = itemCode,
+        selected = selected,
         itemIndex = 0,
     )

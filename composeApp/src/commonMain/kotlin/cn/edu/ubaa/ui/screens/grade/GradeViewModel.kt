@@ -7,6 +7,8 @@ import cn.edu.ubaa.model.dto.GradeData
 import cn.edu.ubaa.model.dto.Term
 import cn.edu.ubaa.repository.GlobalTermRepository
 import cn.edu.ubaa.repository.TermRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -104,42 +106,77 @@ internal constructor(
     }
   }
 
-  private suspend fun loadAllGrades(terms: List<Term>, selectedTerm: Term) {
+  private suspend fun loadAllGrades(terms: List<Term>, selectedTerm: Term) = coroutineScope {
     _uiState.value = _uiState.value.copy(isSummaryLoading = terms.size > 1)
     val orderedTerms =
         listOf(selectedTerm) + terms.filterNot { it.itemCode == selectedTerm.itemCode }
+    val requests =
+        orderedTerms.map { term -> term to async { gradeSource.getGrades(term.itemCode) } }
+    val selectedRequest = requests.first()
+    val remainingRequests = requests.drop(1)
 
-    orderedTerms.forEachIndexed { index, term ->
-      gradeSource
-          .getGrades(term.itemCode)
-          .onSuccess { gradeData ->
-            val updatedTermGrades = _uiState.value.termGrades + (term.itemCode to gradeData)
-            val isSelectedTerm = term.itemCode == _uiState.value.selectedTerm?.itemCode
-            _uiState.value =
-                _uiState.value.copy(
-                    isLoading = if (isSelectedTerm) false else _uiState.value.isLoading,
-                    isRefreshing = false,
-                    isSummaryLoading = index < orderedTerms.lastIndex,
-                    gradeData = if (isSelectedTerm) gradeData else _uiState.value.gradeData,
-                    termGrades = updatedTermGrades,
-                    error = null,
-                )
+    val selectedResult = selectedRequest.second.await()
+    val selectedGradeData = selectedResult.getOrNull()
+    if (selectedGradeData == null) {
+      remainingRequests.forEach { (_, request) -> request.cancel() }
+      val exception = selectedResult.exceptionOrNull()
+      val isSelectedTerm = selectedRequest.first.itemCode == _uiState.value.selectedTerm?.itemCode
+      _uiState.value =
+          if (isSelectedTerm) {
+            _uiState.value.copy(
+                isLoading = false,
+                isRefreshing = false,
+                isSummaryLoading = false,
+                error = exception?.message ?: "加载成绩信息失败",
+            )
+          } else {
+            _uiState.value.copy(isRefreshing = false, isSummaryLoading = false)
           }
-          .onFailure { exception ->
-            val isSelectedTerm = term.itemCode == _uiState.value.selectedTerm?.itemCode
-            _uiState.value =
-                if (isSelectedTerm) {
-                  _uiState.value.copy(
-                      isLoading = false,
-                      isRefreshing = false,
-                      isSummaryLoading = false,
-                      error = exception.message ?: "加载成绩信息失败",
-                  )
-                } else {
-                  _uiState.value.copy(isRefreshing = false, isSummaryLoading = false)
-                }
-            return
-          }
+      return@coroutineScope
+    }
+
+    val isSelectedTerm = selectedRequest.first.itemCode == _uiState.value.selectedTerm?.itemCode
+    _uiState.value =
+        _uiState.value.copy(
+            isLoading = if (isSelectedTerm) false else _uiState.value.isLoading,
+            isRefreshing = false,
+            isSummaryLoading = remainingRequests.isNotEmpty(),
+            gradeData = if (isSelectedTerm) selectedGradeData else _uiState.value.gradeData,
+            termGrades =
+                _uiState.value.termGrades + (selectedRequest.first.itemCode to selectedGradeData),
+            error = null,
+        )
+
+    remainingRequests.forEachIndexed { index, (term, request) ->
+      val result = request.await()
+      val gradeData = result.getOrNull()
+      if (gradeData == null) {
+        val isCurrentSelectedTerm = term.itemCode == _uiState.value.selectedTerm?.itemCode
+        _uiState.value =
+            if (isCurrentSelectedTerm) {
+              val exception = result.exceptionOrNull()
+              _uiState.value.copy(
+                  isLoading = false,
+                  isRefreshing = false,
+                  isSummaryLoading = false,
+                  error = exception?.message ?: "加载成绩信息失败",
+              )
+            } else {
+              _uiState.value.copy(isRefreshing = false, isSummaryLoading = false)
+            }
+        return@coroutineScope
+      }
+
+      val isCurrentSelectedTerm = term.itemCode == _uiState.value.selectedTerm?.itemCode
+      _uiState.value =
+          _uiState.value.copy(
+              isLoading = if (isCurrentSelectedTerm) false else _uiState.value.isLoading,
+              isRefreshing = false,
+              isSummaryLoading = index < remainingRequests.lastIndex,
+              gradeData = if (isCurrentSelectedTerm) gradeData else _uiState.value.gradeData,
+              termGrades = _uiState.value.termGrades + (term.itemCode to gradeData),
+              error = null,
+          )
     }
     _uiState.value = _uiState.value.copy(isRefreshing = false, isSummaryLoading = false)
   }
