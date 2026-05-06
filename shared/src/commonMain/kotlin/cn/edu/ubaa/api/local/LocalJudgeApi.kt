@@ -652,7 +652,7 @@ private fun normalizeLocalJudgeDetailKeys(
         .distinctBy { it.courseId to it.assignmentId }
 
 private object LocalJudgeHtmlParsers {
-  private val linkOptions = setOf(RegexOption.IGNORE_CASE)
+  private val linkOptions = setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
   private val tagRegex = Regex("""<[^>]+>""")
   private val rowRegex = Regex("""<tr\b[^>]*>([\s\S]*?)</tr>""", linkOptions)
   private val cellRegex = Regex("""<(?:th|td)\b[^>]*>([\s\S]*?)</(?:th|td)>""", linkOptions)
@@ -674,15 +674,17 @@ private object LocalJudgeHtmlParsers {
   fun parseCourses(html: String): List<LocalJudgeCourseRaw> {
     val regex =
         Regex(
-            """<a\b[^>]*href\s*=\s*["'][^"']*courselist\.jsp\?courseID=(\d+)[^"']*["'][^>]*>(.*?)</a>""",
+            """<a\b[^>]*href\s*=\s*(?:"[^"]*courselist\.jsp\?courseID=(\d+)[^"]*"|'[^']*courselist\.jsp\?courseID=(\d+)[^']*'|[^\s>]*courselist\.jsp\?courseID=(\d+)[^\s>]*)[^>]*>(.*?)</a>""",
             linkOptions,
         )
     return regex
         .findAll(html)
         .mapNotNull { match ->
-          val courseId = match.groupValues[1]
+          val courseId =
+              match.groupValues.drop(1).take(3).firstOrNull { it.isNotBlank() }
+                  ?: return@mapNotNull null
           if (courseId == "0") return@mapNotNull null
-          val courseName = cleanText(stripTags(match.groupValues[2]))
+          val courseName = cleanText(stripTags(match.groupValues[4]))
           courseName.takeIf { it.isNotBlank() }?.let { LocalJudgeCourseRaw(courseId, it) }
         }
         .distinctBy { it.courseId }
@@ -695,22 +697,27 @@ private object LocalJudgeHtmlParsers {
   ): List<LocalJudgeAssignmentRaw> {
     val regex =
         Regex(
-            """<a\b[^>]*href\s*=\s*["']([^"']*assignID=(\d+)[^"']*)["'][^>]*>(.*?)</a>""",
+            """<a\b[^>]*href\s*=\s*(?:"([^"]*assignID=(\d+)[^"]*)"|'([^']*assignID=(\d+)[^']*)'|([^\s>]*assignID=(\d+)[^\s>]*))[^>]*>(.*?)</a>""",
             linkOptions,
         )
     return regex
         .findAll(html)
         .mapNotNull { match ->
-          val href = match.groupValues[1]
+          val href =
+              listOf(match.groupValues[1], match.groupValues[3], match.groupValues[5])
+                  .firstOrNull { it.isNotBlank() } ?: return@mapNotNull null
+          val assignmentId =
+              listOf(match.groupValues[2], match.groupValues[4], match.groupValues[6])
+                  .firstOrNull { it.isNotBlank() } ?: return@mapNotNull null
           if (href.contains("problemContent") || href.contains("judgeDetails")) {
             return@mapNotNull null
           }
-          val title = cleanText(stripTags(match.groupValues[3]))
+          val title = cleanText(stripTags(match.groupValues[7]))
           title
               .takeIf { it.isNotBlank() }
               ?.let {
                 LocalJudgeAssignmentRaw(
-                    assignmentId = match.groupValues[2],
+                    assignmentId = assignmentId,
                     courseId = course.courseId,
                     courseName = course.courseName,
                     title = it,

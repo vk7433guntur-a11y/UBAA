@@ -198,6 +198,44 @@ class JudgeViewModelTest {
   }
 
   @Test
+  fun `show expired disables unfinished filter and exposes submitted expired assignments`() =
+      runTest {
+        setMainDispatcher(testScheduler)
+        val viewModel = createViewModel(apiWithAssignments())
+
+        viewModel.ensureAssignmentsLoaded()
+        advanceUntilIdle()
+        viewModel.setShowExpired(true)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(!state.showOnlyUnfinished)
+        assertEquals(
+            listOf("103", "101", "102"),
+            state.visibleAssignments.map { it.assignmentId },
+        )
+      }
+
+  @Test
+  fun `unfinished filter cannot be reenabled while expired assignments are shown`() = runTest {
+    setMainDispatcher(testScheduler)
+    val viewModel = createViewModel(apiWithAssignments())
+
+    viewModel.ensureAssignmentsLoaded()
+    advanceUntilIdle()
+    viewModel.setShowExpired(true)
+    viewModel.setShowOnlyUnfinished(true)
+    advanceUntilIdle()
+
+    val state = viewModel.uiState.value
+    assertTrue(!state.showOnlyUnfinished)
+    assertEquals(
+        listOf("103", "101", "102"),
+        state.visibleAssignments.map { it.assignmentId },
+    )
+  }
+
+  @Test
   fun `enabling show expired refreshes assignments with expired flag`() = runTest {
     setMainDispatcher(testScheduler)
     val api = RecordingJudgeApi()

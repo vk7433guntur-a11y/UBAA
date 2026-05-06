@@ -125,14 +125,19 @@ class JudgeViewModel(
 
   fun setShowExpired(enabled: Boolean) {
     val shouldRefresh = enabled && !_uiState.value.showExpired
-    updateVisibleAssignments { copy(showExpired = enabled) }
+    updateVisibleAssignments {
+      copy(
+          showExpired = enabled,
+          showOnlyUnfinished = if (enabled) false else showOnlyUnfinished,
+      )
+    }
     if (shouldRefresh) {
       loadAssignments(refresh = true)
     }
   }
 
   fun setShowOnlyUnfinished(enabled: Boolean) {
-    updateVisibleAssignments { copy(showOnlyUnfinished = enabled) }
+    updateVisibleAssignments { copy(showOnlyUnfinished = enabled && !showExpired) }
   }
 
   fun loadAssignmentDetail(courseId: String, assignmentId: String) {

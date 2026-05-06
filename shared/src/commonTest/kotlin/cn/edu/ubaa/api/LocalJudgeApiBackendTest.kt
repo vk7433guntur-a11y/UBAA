@@ -194,6 +194,62 @@ class LocalJudgeApiBackendTest {
   }
 
   @Test
+  fun `judge api parses multiline course links and upstream assignment links`() = runTest {
+    val engine = MockEngine { request ->
+      when (request.url.toString()) {
+        "https://sso.buaa.edu.cn/login?service=http%3A%2F%2Fjudge.buaa.edu.cn%2F" ->
+            respond(
+                content = ByteReadChannel.Empty,
+                status = HttpStatusCode.Found,
+                headers = headersOf(HttpHeaders.Location, "https://judge.buaa.edu.cn/"),
+            )
+        "https://judge.buaa.edu.cn/" -> respondHtml("<html><body>judge ready</body></html>")
+        "https://judge.buaa.edu.cn/courselist.jsp?courseID=0" ->
+            respondHtml(
+                """
+                <html><body>
+                  <a
+                    class="list-group-item"
+                    href="courselist.jsp?courseID=1">
+                    软件工程
+                  </a>
+                </body></html>
+                """
+            )
+        "https://judge.buaa.edu.cn/courselist.jsp?courseID=1" ->
+            respondHtml("<html><body>course selected</body></html>")
+        "https://judge.buaa.edu.cn/assignment/index.jsp" ->
+            respondHtml(
+                """
+                <html><body>
+                  <a href="index.jsp?courseID=1&assignID=101" class="list-group-item">设计作业</a>
+                </body></html>
+                """
+            )
+        "https://judge.buaa.edu.cn/assignment/index.jsp?assignID=101" ->
+            respondHtml(
+                """
+                <html><body>
+                  作业时间：2026-04-20 19:00:00 至 2026-05-03 23:00:00
+                  作业满分： 100.00 ，共 1道 题
+                  <table><tbody>
+                    <tr><th>1.</th><td>设计说明</td><td>100.00</td><td>未提交答案</td></tr>
+                  </tbody></table>
+                </body></html>
+                """
+            )
+        else -> error("Unexpected request: ${request.method.value} ${request.url}")
+      }
+    }
+    useMockUpstream(engine)
+
+    val result = JudgeApi().getAssignments(includeExpired = true)
+
+    assertTrue(result.isSuccess, result.exceptionOrNull()?.message.orEmpty())
+    assertEquals(listOf("101"), result.getOrNull()?.assignments?.map { it.assignmentId })
+  }
+
+  @Test
   fun `judge api records cutoff courses locally and skips them on later default refresh`() =
       runTest {
         val requestedUrls = mutableListOf<String>()

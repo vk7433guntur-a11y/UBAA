@@ -48,9 +48,21 @@ class LocalJudgeRealIntegrationTest {
     assertTrue(assignmentsResult.isSuccess, assignmentsResult.exceptionOrNull()?.message.orEmpty())
     val assignments = assignmentsResult.getOrThrow().assignments
     println("REAL_LOCAL_JUDGE assignments=${assignments.size}")
-    assertTrue(assignments.isNotEmpty(), "real local account should expose judge assignments")
+    assertTrue(assignments.isNotEmpty(), "real local account should expose current judge assignments")
 
-    val first = assignments.first()
+    val allAssignmentsResult = api.getAssignments(includeExpired = true)
+    assertTrue(
+        allAssignmentsResult.isSuccess,
+        allAssignmentsResult.exceptionOrNull()?.message.orEmpty(),
+    )
+    val allAssignments = allAssignmentsResult.getOrThrow().assignments
+    println("REAL_LOCAL_JUDGE include_expired_assignments=${allAssignments.size}")
+    assertTrue(
+        allAssignments.isNotEmpty(),
+        "real local account should expose judge assignments when expired assignments are included",
+    )
+
+    val first = allAssignments.first()
     val detailsResult =
         api.getAssignmentDetails(
             listOf(JudgeAssignmentDetailKeyDto(first.courseId, first.assignmentId))
