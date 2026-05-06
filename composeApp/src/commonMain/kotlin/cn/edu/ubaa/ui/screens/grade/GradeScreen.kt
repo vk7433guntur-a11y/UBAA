@@ -49,18 +49,41 @@ fun GradeScreen(viewModel: GradeViewModel) {
           Text(text = "加载失败: ${uiState.error}", color = MaterialTheme.colorScheme.error)
         }
       }
-      uiState.gradeData != null -> GradeList(grades = uiState.gradeData!!.grades)
+      uiState.gradeData != null ->
+          GradeList(
+              grades = uiState.gradeData!!.grades,
+              allGrades = uiState.termGrades.values.flatMap { it.grades },
+              isSummaryLoading = uiState.isSummaryLoading,
+          )
     }
   }
 }
 
 @Composable
-private fun GradeList(grades: List<Grade>) {
+private fun GradeList(
+    grades: List<Grade>,
+    allGrades: List<Grade>,
+    isSummaryLoading: Boolean,
+) {
   LazyColumn(
       contentPadding = PaddingValues(16.dp),
       verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
-    item { GradeSummaryCard(grades = grades) }
+    item {
+      GradeSummaryCard(
+          title = "全部成绩",
+          statistics = calculateGradeStatistics(allGrades),
+          showCourseAndCredits = false,
+          isLoading = isSummaryLoading,
+      )
+    }
+    item {
+      GradeSummaryCard(
+          title = "本学期",
+          statistics = calculateGradeStatistics(grades),
+          showCourseAndCredits = true,
+      )
+    }
 
     if (grades.isEmpty()) {
       item {
@@ -78,32 +101,60 @@ private fun GradeList(grades: List<Grade>) {
 }
 
 @Composable
-private fun GradeSummaryCard(grades: List<Grade>) {
-  val totalCredits = grades.mapNotNull { it.credit }.sum()
-  val averageScore =
-      grades.mapNotNull { it.score?.toDoubleOrNull() }.takeIf { it.isNotEmpty() }?.average()
-
+private fun GradeSummaryCard(
+    title: String,
+    statistics: GradeStatistics,
+    showCourseAndCredits: Boolean,
+    isLoading: Boolean = false,
+) {
   Card(
       modifier = Modifier.fillMaxWidth(),
       colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
   ) {
     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-      Text("成绩概览", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-      Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-        SummaryValue(label = "课程数", value = grades.size.toString())
+      Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+      if (showCourseAndCredits) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+          SummaryValue(
+              label = "课程数",
+              value = statistics.courseCount.toString(),
+              modifier = Modifier.weight(1f),
+          )
+          SummaryValue(
+              label = "总学分",
+              value =
+                  if (statistics.totalCredits > 0.0) formatNumber(statistics.totalCredits)
+                  else "--",
+              modifier = Modifier.weight(1f),
+          )
+        }
+      }
+      Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(16.dp),
+      ) {
         SummaryValue(
-            label = "总学分",
-            value = if (totalCredits > 0.0) formatNumber(totalCredits) else "--",
+            label = "GPA",
+            value = if (isLoading) "统计中" else statistics.gpa?.let(::formatNumber) ?: "--",
+            modifier = Modifier.weight(1f),
         )
-        SummaryValue(label = "均分", value = averageScore?.let(::formatNumber) ?: "--")
+        SummaryValue(
+            label = "加权平均分",
+            value =
+                if (isLoading) "统计中" else statistics.weightedAverage?.let(::formatNumber) ?: "--",
+            modifier = Modifier.weight(1f),
+        )
       }
     }
   }
 }
 
 @Composable
-private fun SummaryValue(label: String, value: String) {
-  Column {
+private fun SummaryValue(label: String, value: String, modifier: Modifier = Modifier) {
+  Column(modifier = modifier) {
     Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
     Text(
         label,
@@ -219,4 +270,70 @@ private fun GradeInfoRow(
 private fun formatNumber(value: Double): String {
   val rounded = kotlin.math.round(value * 100.0) / 100.0
   return if (rounded % 1.0 == 0.0) rounded.toInt().toString() else rounded.toString()
+}
+
+internal data class GradeStatistics(
+    val courseCount: Int,
+    val totalCredits: Double,
+    val gpa: Double?,
+    val weightedAverage: Double?,
+)
+
+internal fun calculateGradeStatistics(grades: List<Grade>): GradeStatistics {
+  var gpaWeightedTotal = 0.0
+  var gpaCreditTotal = 0.0
+  var scoreWeightedTotal = 0.0
+  var scoreCreditTotal = 0.0
+
+  grades.forEach { grade ->
+    val credit = grade.credit?.takeIf { it > 0.0 } ?: return@forEach
+    val score = grade.score?.trim()?.takeIf { it.isNotEmpty() } ?: return@forEach
+    val points = score.toGradePoint() ?: return@forEach
+    val numericScore = score.toWeightedAverageScore() ?: return@forEach
+
+    gpaWeightedTotal += points * credit
+    gpaCreditTotal += credit
+    scoreWeightedTotal += numericScore * credit
+    scoreCreditTotal += credit
+  }
+
+  return GradeStatistics(
+      courseCount = grades.size,
+      totalCredits = grades.mapNotNull { it.credit?.takeIf { credit -> credit > 0.0 } }.sum(),
+      gpa = weightedValue(gpaWeightedTotal, gpaCreditTotal),
+      weightedAverage = weightedValue(scoreWeightedTotal, scoreCreditTotal),
+  )
+}
+
+private fun weightedValue(total: Double, credits: Double): Double? =
+    if (credits > 0.0) kotlin.math.round((total / credits) * 100.0) / 100.0 else null
+
+private fun String.toGradePoint(): Double? {
+  return when (this) {
+    "优" -> 4.0
+    "良" -> 3.5
+    "中" -> 2.8
+    "及格" -> 1.7
+    "不及格" -> 0.0
+    "通过",
+    "不通过" -> null
+    else -> {
+      val numericScore = toDoubleOrNull() ?: return null
+      if (numericScore < 60.0) 0.0
+      else 4.0 - (3.0 * (100.0 - numericScore) * (100.0 - numericScore) / 1600.0)
+    }
+  }
+}
+
+private fun String.toWeightedAverageScore(): Double? {
+  return when (this) {
+    "优" -> 95.0
+    "良" -> 85.0
+    "中" -> 75.0
+    "及格" -> 60.0
+    "不及格" -> 0.0
+    "通过",
+    "不通过" -> null
+    else -> toDoubleOrNull()
+  }
 }
