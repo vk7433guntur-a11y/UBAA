@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
@@ -174,7 +176,6 @@ fun MainAppScreen(
         null
       }
   val gradeUiState = gradeViewModel?.uiState?.collectAsState()?.value ?: GradeUiState()
-  var showGradeTermMenu by remember { mutableStateOf(false) }
 
   val signinViewModel: SigninViewModel =
       viewModel(key = "signin-${userData.schoolid}") { SigninViewModel() }
@@ -279,6 +280,7 @@ fun MainAppScreen(
             !scheduleViewModel.hasTodayLoaded() ||
             !signinViewModel.hasTodayLoaded() ||
             !spocViewModel.hasAssignmentsLoaded() ||
+            !judgeViewModel.hasAssignmentsLoaded() ||
             !bykcViewModel.hasChosenCoursesLoaded() ||
             cgyyViewModel?.hasOrdersLoaded() != true
     homeBootstrapCoordinator.restart(
@@ -288,6 +290,7 @@ fun MainAppScreen(
             },
             loadSignin = { force -> signinViewModel.ensureTodayLoaded(forceRefresh = force) },
             loadSpoc = { force -> spocViewModel.ensureAssignmentsLoaded(forceRefresh = force) },
+            loadJudge = { force -> judgeViewModel.ensureAssignmentsLoaded(forceRefresh = force) },
             loadBykc = { force -> bykcViewModel.ensureChosenCoursesLoaded(forceRefresh = force) },
             loadCgyy = { force -> cgyyViewModel?.ensureOrdersLoaded(forceRefresh = force) },
         ),
@@ -523,7 +526,7 @@ fun MainAppScreen(
         AppScreen.ABOUT -> "关于"
         AppScreen.SCHEDULE -> "课程表"
         AppScreen.EXAM -> "考试查询"
-        AppScreen.GRADE -> "成绩查询"
+        AppScreen.GRADE -> gradeUiState.selectedTerm?.itemName ?: "成绩查询"
         AppScreen.COURSE_DETAIL -> "课程详情"
         AppScreen.BYKC_HOME -> "博雅课程"
         AppScreen.BYKC_COURSES -> "选择课程"
@@ -586,25 +589,29 @@ fun MainAppScreen(
                   }
                 }
               } else if (currentScreen == AppScreen.GRADE) {
-                Box {
-                  TextButton(onClick = { showGradeTermMenu = true }) {
-                    Text(gradeUiState.selectedTerm?.itemName ?: "选择学期")
-                    Icon(Icons.Default.ArrowDropDown, null)
-                  }
-                  DropdownMenu(
-                      expanded = showGradeTermMenu,
-                      onDismissRequest = { showGradeTermMenu = false },
-                  ) {
-                    gradeUiState.terms.forEach {
-                      DropdownMenuItem(
-                          text = { Text(it.itemName) },
-                          onClick = {
-                            gradeViewModel?.selectTerm(it)
-                            showGradeTermMenu = false
-                          },
-                      )
-                    }
-                  }
+                val currentTermIndex = gradeUiState.terms.indexOf(gradeUiState.selectedTerm)
+                IconButton(
+                    onClick = {
+                      if (currentTermIndex > 0) {
+                        gradeViewModel?.selectTerm(gradeUiState.terms[currentTermIndex - 1])
+                      }
+                    },
+                    enabled = currentTermIndex > 0,
+                ) {
+                  Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "上一学期")
+                }
+                IconButton(
+                    onClick = {
+                      if (
+                          currentTermIndex != -1 && currentTermIndex < gradeUiState.terms.size - 1
+                      ) {
+                        gradeViewModel?.selectTerm(gradeUiState.terms[currentTermIndex + 1])
+                      }
+                    },
+                    enabled =
+                        currentTermIndex != -1 && currentTermIndex < gradeUiState.terms.size - 1,
+                ) {
+                  Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "下一学期")
                 }
               } else if (currentScreen == AppScreen.SPOC_ASSIGNMENTS) {
                 IconButton(onClick = { showSpocSortFilterDialog = true }) {
