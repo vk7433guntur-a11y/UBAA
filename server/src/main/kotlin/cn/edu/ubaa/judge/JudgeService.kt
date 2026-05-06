@@ -6,6 +6,11 @@ import cn.edu.ubaa.model.dto.JudgeAssignmentsResponse
 import cn.edu.ubaa.utils.withUpstreamDeadline
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 /** 希冀作业业务服务。 */
 internal class JudgeService(private val clientProvider: (String) -> JudgeClient = ::JudgeClient) {
@@ -18,28 +23,23 @@ internal class JudgeService(private val clientProvider: (String) -> JudgeClient 
 
   suspend fun getAssignments(username: String): JudgeAssignmentsResponse {
     return withJudgeDeadline("希冀作业列表加载超时") {
-      val client = getClient(username)
-      val assignments =
-          client
-              .getCourses()
-              .flatMap { course ->
-                client.getAssignments(course).map { assignment ->
-                  client
-                      .getAssignmentDetail(
-                          courseId = assignment.courseId,
-                          courseName = assignment.courseName,
-                          assignmentId = assignment.assignmentId,
-                          title = assignment.title,
-                      )
-                      .toSummary()
+      withClient(username) { client ->
+        val courses = client.getCourses()
+        val assignments =
+            courses
+                .mapConcurrently(JUDGE_ASSIGNMENT_QUERY_CONCURRENCY) { course ->
+                  client.withIsolatedClient { worker ->
+                    worker.getAssignments(course).map { assignment -> assignment.toSummary() }
+                  }
                 }
-              }
-              .sortedWith(
-                  compareBy<JudgeAssignmentSummaryDto> { it.dueTime ?: "9999-99-99 99:99:99" }
-                      .thenBy { it.courseName }
-                      .thenBy { it.title }
-              )
-      JudgeAssignmentsResponse(assignments)
+                .flatten()
+                .sortedWith(
+                    compareBy<JudgeAssignmentSummaryDto> { it.dueTime ?: "9999-99-99 99:99:99" }
+                        .thenBy { it.courseName }
+                        .thenBy { it.title }
+                )
+        JudgeAssignmentsResponse(assignments)
+      }
     }
   }
 
@@ -49,20 +49,24 @@ internal class JudgeService(private val clientProvider: (String) -> JudgeClient 
       assignmentId: String,
   ): JudgeAssignmentDetailDto {
     return withJudgeDeadline("希冀作业详情加载超时") {
-      val client = getClient(username)
-      val course = client.getCourses().firstOrNull { it.courseId == courseId }
-      val courseName = course?.courseName.orEmpty()
-      val assignment =
-          course?.let {
-            client.getAssignments(it).firstOrNull { raw -> raw.assignmentId == assignmentId }
-          }
+      withClient(username) { client ->
+        val course =
+            client.getCourses().firstOrNull { it.courseId == courseId }
+                ?: throw JudgeResourceNotFoundException("希冀课程不存在或无权限访问")
 
-      client.getAssignmentDetail(
-          courseId = courseId,
-          courseName = assignment?.courseName ?: courseName,
-          assignmentId = assignmentId,
-          title = assignment?.title ?: assignmentId,
-      )
+        client.withIsolatedClient { worker ->
+          val assignment =
+              worker.getAssignments(course).firstOrNull { raw -> raw.assignmentId == assignmentId }
+                  ?: throw JudgeResourceNotFoundException("希冀作业不存在或无权限访问")
+
+          worker.getAssignmentDetail(
+              courseId = assignment.courseId,
+              courseName = assignment.courseName,
+              assignmentId = assignment.assignmentId,
+              title = assignment.title,
+          )
+        }
+      }
     }
   }
 
@@ -70,7 +74,7 @@ internal class JudgeService(private val clientProvider: (String) -> JudgeClient 
     val cutoff = System.currentTimeMillis() - maxIdleMillis
     var removed = 0
     for ((username, cached) in clientCache.entries.toList()) {
-      if (cached.lastAccessAt >= cutoff) continue
+      if (cached.lastAccessAt > cutoff) continue
       if (!clientCache.remove(username, cached)) continue
       cached.client.close()
       removed++
@@ -85,13 +89,17 @@ internal class JudgeService(private val clientProvider: (String) -> JudgeClient 
     clientCache.clear()
   }
 
-  private fun getClient(username: String): JudgeClient {
+  private suspend fun <T> withClient(username: String, block: suspend (JudgeClient) -> T): T {
+    val cached = getCachedClient(username)
+    cached.lastAccessAt = System.currentTimeMillis()
+    return block(cached.client)
+  }
+
+  private fun getCachedClient(username: String): CachedClient {
     val now = System.currentTimeMillis()
-    return clientCache
-        .compute(username) { _, existing ->
-          existing?.also { it.lastAccessAt = now } ?: CachedClient(clientProvider(username), now)
-        }!!
-        .client
+    return clientCache.compute(username) { _, existing ->
+      existing?.also { it.lastAccessAt = now } ?: CachedClient(clientProvider(username), now)
+    }!!
   }
 
   private suspend fun <T> withJudgeDeadline(message: String, block: suspend () -> T): T {
@@ -100,7 +108,16 @@ internal class JudgeService(private val clientProvider: (String) -> JudgeClient 
 
   companion object {
     private const val DEFAULT_MAX_IDLE_MILLIS = 30 * 60 * 1000L
+    private const val JUDGE_ASSIGNMENT_QUERY_CONCURRENCY = 4
   }
+}
+
+private suspend fun <T, R> Iterable<T>.mapConcurrently(
+    concurrency: Int,
+    transform: suspend (T) -> R,
+): List<R> = coroutineScope {
+  val semaphore = Semaphore(concurrency)
+  map { item -> async { semaphore.withPermit { transform(item) } } }.awaitAll()
 }
 
 internal object GlobalJudgeService {

@@ -43,6 +43,7 @@ internal fun userFacingMessage(code: String, fallback: String? = null): String {
     "spoc_auth_failed" -> "SPOC 登录状态异常，请重新登录后重试"
     "spoc_error" -> "SPOC 服务暂时不可用，请稍后重试"
     "judge_auth_failed" -> "希冀登录状态异常，请重新登录后重试"
+    "judge_not_found" -> "希冀作业不存在或无权限访问，请刷新后重试"
     "judge_error" -> "希冀服务暂时不可用，请稍后重试"
     "judge_timeout" -> "希冀服务响应超时，请稍后重试"
     "ygdk_error" -> "阳光打卡服务暂时不可用，请稍后重试"

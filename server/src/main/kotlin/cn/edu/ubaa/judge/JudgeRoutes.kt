@@ -59,6 +59,9 @@ private suspend fun ApplicationCall.runJudgeCall(
   } catch (e: JudgeAuthenticationException) {
     scope.markUnauthenticated()
     respondError(HttpStatusCode.BadGateway, "judge_auth_failed")
+  } catch (e: JudgeResourceNotFoundException) {
+    scope.markBusinessFailure()
+    respondError(HttpStatusCode.NotFound, "judge_not_found", e.message)
   } catch (e: JudgeException) {
     scope.markBusinessFailure()
     respondError(HttpStatusCode.BadGateway, "judge_error")

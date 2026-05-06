@@ -6,11 +6,14 @@ import cn.edu.ubaa.auth.SessionManager
 import cn.edu.ubaa.model.dto.JudgeSubmissionStatus
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 
 class JudgeServiceTest {
   @Test
-  fun `get assignments aggregates courses and sorts by due time`() = runBlocking {
+  fun `get assignments returns cheap summaries without fetching details`() = runBlocking {
     val fakeClient = FakeJudgeClient()
     val service = JudgeService(clientProvider = { fakeClient })
 
@@ -19,11 +22,13 @@ class JudgeServiceTest {
     assertEquals(2, response.assignments.size)
     assertEquals(listOf("102", "101"), response.assignments.map { it.assignmentId })
     assertEquals(listOf("算法设计", "软件工程"), response.assignments.map { it.courseName })
-    assertEquals(JudgeSubmissionStatus.SUBMITTED, response.assignments.first().submissionStatus)
-    assertEquals(JudgeSubmissionStatus.PARTIAL, response.assignments.last().submissionStatus)
+    assertEquals(
+        listOf(JudgeSubmissionStatus.UNKNOWN, JudgeSubmissionStatus.UNKNOWN),
+        response.assignments.map { it.submissionStatus },
+    )
     assertEquals(1, fakeClient.courseCalls)
     assertEquals(2, fakeClient.assignmentCalls)
-    assertEquals(2, fakeClient.detailCalls)
+    assertEquals(0, fakeClient.detailCalls)
   }
 
   @Test
@@ -43,6 +48,40 @@ class JudgeServiceTest {
   }
 
   @Test
+  fun `get assignment detail rejects course outside current user courses`() = runBlocking {
+    val fakeClient = FakeJudgeClient()
+    val service = JudgeService(clientProvider = { fakeClient })
+
+    assertFailsWith<JudgeException> { service.getAssignmentDetail("24182104", "missing", "101") }
+
+    assertEquals(1, fakeClient.courseCalls)
+    assertEquals(0, fakeClient.assignmentCalls)
+    assertEquals(0, fakeClient.detailCalls)
+  }
+
+  @Test
+  fun `get assignment detail rejects assignment outside selected course`() = runBlocking {
+    val fakeClient = FakeJudgeClient()
+    val service = JudgeService(clientProvider = { fakeClient })
+
+    assertFailsWith<JudgeException> { service.getAssignmentDetail("24182104", "1", "missing") }
+
+    assertEquals(1, fakeClient.courseCalls)
+    assertEquals(1, fakeClient.assignmentCalls)
+    assertEquals(0, fakeClient.detailCalls)
+  }
+
+  @Test
+  fun `assignment course queries run concurrently per user`() = runBlocking {
+    val fakeClient = FakeJudgeClient(delayOperations = true)
+    val service = JudgeService(clientProvider = { fakeClient })
+
+    service.getAssignments("24182104")
+
+    assertTrue(fakeClient.maxActiveCalls > 1, "expected concurrent judge course queries")
+  }
+
+  @Test
   fun `cleanup expired clients closes removed clients only`() {
     val fakeClient = FakeJudgeClient()
     val service = JudgeService(clientProvider = { fakeClient })
@@ -55,7 +94,7 @@ class JudgeServiceTest {
     assertEquals(1, fakeClient.closeCalls)
   }
 
-  private class FakeJudgeClient :
+  private class FakeJudgeClient(private val delayOperations: Boolean = false) :
       JudgeClient(
           username = "24182104",
           sessionManager =
@@ -68,21 +107,29 @@ class JudgeServiceTest {
     var assignmentCalls = 0
     var detailCalls = 0
     var closeCalls = 0
+    var maxActiveCalls = 0
+      private set
+
+    private var activeCalls = 0
 
     override suspend fun getCourses(): List<JudgeCourseRaw> {
-      courseCalls++
-      return listOf(
-          JudgeCourseRaw(courseId = "1", courseName = "软件工程"),
-          JudgeCourseRaw("2", "算法设计"),
-      )
+      return tracked {
+        courseCalls++
+        listOf(
+            JudgeCourseRaw(courseId = "1", courseName = "软件工程"),
+            JudgeCourseRaw("2", "算法设计"),
+        )
+      }
     }
 
     override suspend fun getAssignments(course: JudgeCourseRaw): List<JudgeAssignmentRaw> {
-      assignmentCalls++
-      return when (course.courseId) {
-        "1" -> listOf(JudgeAssignmentRaw("101", "1", "软件工程", "设计作业"))
-        "2" -> listOf(JudgeAssignmentRaw("102", "2", "算法设计", "编程作业"))
-        else -> emptyList()
+      return tracked {
+        assignmentCalls++
+        when (course.courseId) {
+          "1" -> listOf(JudgeAssignmentRaw("101", "1", "软件工程", "设计作业"))
+          "2" -> listOf(JudgeAssignmentRaw("102", "2", "算法设计", "编程作业"))
+          else -> emptyList()
+        }
       }
     }
 
@@ -92,11 +139,12 @@ class JudgeServiceTest {
         assignmentId: String,
         title: String,
     ): JudgeAssignmentParsedDetail {
-      detailCalls++
-      return JudgeParsers.parseAssignmentDetail(
-          html =
-              if (assignmentId == "101") {
-                """
+      return tracked {
+        detailCalls++
+        JudgeParsers.parseAssignmentDetail(
+            html =
+                if (assignmentId == "101") {
+                  """
                 <html><body>
                   作业时间：2026-04-20 19:00:00 至 2026-05-03 23:00:00
                   作业满分： 100.00 ，共 2道 题
@@ -106,8 +154,8 @@ class JudgeServiceTest {
                   </tbody></table>
                 </body></html>
                 """
-              } else {
-                """
+                } else {
+                  """
                 <html><body>
                   作业时间：2026-04-10 08:00:00 至 2026-04-18 23:00:00
                   作业满分： 20.00 ，共 1道 题 总分：20.00
@@ -116,16 +164,33 @@ class JudgeServiceTest {
                   </tbody></table>
                 </body></html>
                 """
-              },
-          courseId = courseId,
-          courseName = courseName,
-          assignmentId = assignmentId,
-          title = title,
-      )
+                },
+            courseId = courseId,
+            courseName = courseName,
+            assignmentId = assignmentId,
+            title = title,
+        )
+      }
     }
 
     override fun close() {
       closeCalls++
+    }
+
+    override suspend fun <T> withIsolatedClient(block: suspend (JudgeClient) -> T): T {
+      return block(this)
+    }
+
+    private suspend fun <T> tracked(block: () -> T): T {
+      if (!delayOperations) return block()
+      activeCalls++
+      maxActiveCalls = maxOf(maxActiveCalls, activeCalls)
+      delay(20)
+      return try {
+        block()
+      } finally {
+        activeCalls--
+      }
     }
   }
 }

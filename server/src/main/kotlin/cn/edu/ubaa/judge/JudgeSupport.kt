@@ -12,6 +12,8 @@ internal open class JudgeException(message: String, cause: Throwable? = null) :
 
 internal class JudgeAuthenticationException(message: String) : JudgeException(message)
 
+internal class JudgeResourceNotFoundException(message: String) : JudgeException(message)
+
 internal typealias JudgeAssignmentParsedDetail = JudgeAssignmentDetailDto
 
 internal data class JudgeCourseRaw(
@@ -326,4 +328,14 @@ internal fun JudgeAssignmentDetailDto.toSummary(): JudgeAssignmentSummaryDto =
         submittedCount = submittedCount,
         submissionStatus = submissionStatus,
         submissionStatusText = submissionStatusText,
+    )
+
+internal fun JudgeAssignmentRaw.toSummary(): JudgeAssignmentSummaryDto =
+    JudgeAssignmentSummaryDto(
+        courseId = courseId,
+        courseName = courseName,
+        assignmentId = assignmentId,
+        title = title,
+        submissionStatus = JudgeSubmissionStatus.UNKNOWN,
+        submissionStatusText = "未知状态",
     )
