@@ -245,6 +245,50 @@ class LocalCgyyApiBackendTest {
   }
 
   @Test
+  fun `cgyy purpose types fall back to static definitions when direct endpoint fails`() = runTest {
+    val engine = MockEngine { request ->
+      when {
+        request.url.encodedPath == "/venue-zhjs-server/sso/manageLogin" ->
+            respond(
+                content = ByteReadChannel.Empty,
+                status = HttpStatusCode.OK,
+                headers =
+                    headersOf(
+                        HttpHeaders.SetCookie,
+                        "sso_buaa_zhjs_token=sso-token; Path=/; HttpOnly",
+                    ),
+            )
+        request.url.encodedPath == "/venue-zhjs-server/api/login" ->
+            respondJson(
+                """
+                {
+                  "code":200,
+                  "message":"OK",
+                  "data":{
+                    "token":{
+                      "access_token":"access-fallback"
+                    }
+                  }
+                }
+                """
+                    .trimIndent()
+            )
+        request.url.encodedPath == "/venue-zhjs-server/api/codes" ->
+            respondJson("""{"code":500,"message":"codes unavailable","data":null}""")
+        else -> error("Unexpected request: ${request.method.value} ${request.url}")
+      }
+    }
+    useMockUpstream(engine)
+    val api = CgyyApi(LocalCgyyApiBackend())
+
+    val purposeTypes = api.getPurposeTypes()
+
+    assertTrue(purposeTypes.isSuccess, purposeTypes.exceptionOrNull()?.message.orEmpty())
+    assertEquals(10, purposeTypes.getOrNull()?.size)
+    assertEquals("学术研讨类（竞赛、答辩、展示等小组讨论）", purposeTypes.getOrNull()?.get(2)?.name)
+  }
+
+  @Test
   fun `cgyy api submits reservation and handles order actions in direct mode`() = runTest {
     var captchaCheckCalls = 0
     val solver =

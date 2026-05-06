@@ -53,7 +53,8 @@ internal class LocalCgyyApiBackend(
 
   override suspend fun getPurposeTypes(): Result<List<CgyyPurposeTypeDto>> =
       execute("研讨室活动类型加载失败，请稍后重试") { _, client ->
-        parsePurposeTypes(client.getPurposeTypesRaw()).ifEmpty { fallbackPurposeTypes() }
+        val dynamic = runCatching { parsePurposeTypes(client.getPurposeTypesRaw()) }.getOrNull()
+        dynamic?.takeIf { it.isNotEmpty() } ?: fallbackPurposeTypes()
       }
 
   override suspend fun getDayInfo(
