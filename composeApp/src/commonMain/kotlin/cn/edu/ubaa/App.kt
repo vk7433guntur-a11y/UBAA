@@ -20,6 +20,7 @@ import cn.edu.ubaa.api.ConnectionMode
 import cn.edu.ubaa.api.ConnectionRuntime
 import cn.edu.ubaa.api.auth.AppVersionCheckResponse
 import cn.edu.ubaa.api.auth.UpdateService
+import cn.edu.ubaa.ui.common.components.ReleaseNotesText
 import cn.edu.ubaa.ui.navigation.MainAppScreen
 import cn.edu.ubaa.ui.screens.auth.AuthViewModel
 import cn.edu.ubaa.ui.screens.auth.ConnectionModeSelectionScreen
@@ -116,7 +117,7 @@ fun App() {
           title = { Text("发现新版本") },
           text = {
             Box(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
-              Text(updateMessage)
+              ReleaseNotesText(updateMessage)
             }
           },
           confirmButton = {
