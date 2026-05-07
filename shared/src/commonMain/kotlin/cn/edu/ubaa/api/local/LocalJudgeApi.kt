@@ -652,7 +652,7 @@ private fun normalizeLocalJudgeDetailKeys(
         .distinctBy { it.courseId to it.assignmentId }
 
 private object LocalJudgeHtmlParsers {
-  private val linkOptions = setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+  private val linkOptions = setOf(RegexOption.IGNORE_CASE)
   private val tagRegex = Regex("""<[^>]+>""")
   private val rowRegex = Regex("""<tr\b[^>]*>([\s\S]*?)</tr>""", linkOptions)
   private val cellRegex = Regex("""<(?:th|td)\b[^>]*>([\s\S]*?)</(?:th|td)>""", linkOptions)
@@ -674,7 +674,7 @@ private object LocalJudgeHtmlParsers {
   fun parseCourses(html: String): List<LocalJudgeCourseRaw> {
     val regex =
         Regex(
-            """<a\b[^>]*href\s*=\s*(?:"[^"]*courselist\.jsp\?courseID=(\d+)[^"]*"|'[^']*courselist\.jsp\?courseID=(\d+)[^']*'|[^\s>]*courselist\.jsp\?courseID=(\d+)[^\s>]*)[^>]*>(.*?)</a>""",
+            """<a\b[^>]*href\s*=\s*(?:"[^"]*courselist\.jsp\?courseID=(\d+)[^"]*"|'[^']*courselist\.jsp\?courseID=(\d+)[^']*'|[^\s>]*courselist\.jsp\?courseID=(\d+)[^\s>]*)[^>]*>([\s\S]*?)</a>""",
             linkOptions,
         )
     return regex
@@ -697,7 +697,7 @@ private object LocalJudgeHtmlParsers {
   ): List<LocalJudgeAssignmentRaw> {
     val regex =
         Regex(
-            """<a\b[^>]*href\s*=\s*(?:"([^"]*assignID=(\d+)[^"]*)"|'([^']*assignID=(\d+)[^']*)'|([^\s>]*assignID=(\d+)[^\s>]*))[^>]*>(.*?)</a>""",
+            """<a\b[^>]*href\s*=\s*(?:"([^"]*assignID=(\d+)[^"]*)"|'([^']*assignID=(\d+)[^']*)'|([^\s>]*assignID=(\d+)[^\s>]*))[^>]*>([\s\S]*?)</a>""",
             linkOptions,
         )
     return regex
