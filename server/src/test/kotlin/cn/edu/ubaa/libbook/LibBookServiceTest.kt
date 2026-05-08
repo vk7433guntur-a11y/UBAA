@@ -68,6 +68,37 @@ class LibBookServiceTest {
     assertEquals("libbook_not_found", error.code)
     assertEquals(1, gateway.cancelCalls)
   }
+
+  @Test
+  fun `reserve libbook error is not retried because reservation is not idempotent`() = runTest {
+    val gateway =
+        object : FakeLibBookGateway() {
+          override suspend fun reserve(request: LibBookReserveRequest): JsonObject {
+            reserveCalls++
+            return buildJsonObject {
+              put("code", 2)
+              put("message", "系统繁忙")
+            }
+          }
+        }
+    val service = LibBookService(clientProvider = { gateway })
+
+    val error =
+        assertFailsWith<LibBookException> {
+          service.reserve(
+              "2418",
+              LibBookReserveRequest(
+                  areaId = "8",
+                  seatId = "101",
+                  day = "2026-05-08",
+                  segment = "seg-1",
+              ),
+          )
+        }
+
+    assertEquals("libbook_error", error.code)
+    assertEquals(1, gateway.reserveCalls)
+  }
 }
 
 private open class FakeLibBookGateway : LibBookGateway {

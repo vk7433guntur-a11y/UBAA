@@ -75,7 +75,7 @@ class LibBookService(
   suspend fun reserve(username: String, request: LibBookReserveRequest): LibBookReserveResponse =
       withLibBookDeadline("图书馆座位预约超时", 10.seconds) {
         validateReserveRequest(request)
-        withFreshClientRetry(username, "reserve") { client ->
+        withFreshClientRetry(username, "reserve", retryGenericErrors = false) { client ->
           val response = client.reserve(request)
           val message = response.messageOrDefault("预约成功")
           if (!response.isBusinessSuccess()) {
@@ -114,7 +114,7 @@ class LibBookService(
   suspend fun cancelBooking(username: String, bookingId: String): LibBookCancelResponse =
       withLibBookDeadline("图书馆预约取消超时") {
         if (bookingId.isBlank()) throw LibBookException("预约记录不存在或已失效", "libbook_not_found")
-        withFreshClientRetry(username, "cancel_booking") { client ->
+        withFreshClientRetry(username, "cancel_booking", retryGenericErrors = false) { client ->
           val response = client.cancelBooking(bookingId)
           val message = response.messageOrDefault("取消成功")
           if (!response.isBusinessSuccess()) {
@@ -155,6 +155,7 @@ class LibBookService(
   private suspend fun <T> withFreshClientRetry(
       username: String,
       operation: String,
+      retryGenericErrors: Boolean = true,
       block: suspend (LibBookGateway) -> T,
   ): T =
       try {
@@ -163,7 +164,7 @@ class LibBookService(
         discardClient(username)
         block(getClient(username))
       } catch (e: LibBookException) {
-        if (e.code != "libbook_error") throw e
+        if (!retryGenericErrors || e.code != "libbook_error") throw e
         discardClient(username)
         block(getClient(username))
       }
