@@ -51,15 +51,19 @@ jobs:
         run: |
           set -euo pipefail
           install -m 700 -d ~/.ssh
-          printf '%s' "$DOCS_SSH_KEY" > ~/.ssh/id_docs
+          printf '%s\n' "$DOCS_SSH_KEY" | perl -pe 's/\\n/\n/g; s/\r//g' > ~/.ssh/id_docs
           chmod 600 ~/.ssh/id_docs
+          if ! ssh-keygen -y -f ~/.ssh/id_docs > /dev/null; then
+            echo "::error::DOCS_SSH_KEY is not a readable private key. Paste the full private key, not the .pub public key; preserve BEGIN/END lines; use an unencrypted deploy key."
+            exit 1
+          fi
           ssh-keyscan -p "$DOCS_SSH_PORT" -H "$DOCS_SSH_HOST" >> ~/.ssh/known_hosts
 
       - name: Create remote docs directory
         run: |
           set -euo pipefail
           remote_path="${DOCS_DEPLOY_PATH%/}"
-          ssh -i ~/.ssh/id_docs -p "$DOCS_SSH_PORT" \
+          ssh -i ~/.ssh/id_docs -o IdentitiesOnly=yes -p "$DOCS_SSH_PORT" \
             "$DOCS_SSH_USER@$DOCS_SSH_HOST" \
             "mkdir -p -- '$remote_path'"
 
@@ -68,6 +72,6 @@ jobs:
           set -euo pipefail
           remote_path="${DOCS_DEPLOY_PATH%/}"
           rsync -az --delete \
-            -e "ssh -i ~/.ssh/id_docs -p $DOCS_SSH_PORT" \
+            -e "ssh -i ~/.ssh/id_docs -o IdentitiesOnly=yes -p $DOCS_SSH_PORT" \
             docs/.vitepress/dist/ \
             "$DOCS_SSH_USER@$DOCS_SSH_HOST:$remote_path/"
