@@ -11,7 +11,7 @@ export default defineConfig({
       { text: '首页', link: '/' },
       { text: '功能说明', link: '/features/' },
       { text: '技术文档', link: '/tech/architecture' },
-      { text: '公告', link: '/announcements/' },
+      { text: '公告中心', link: '/announcements/' },
       { text: '更新日志', link: '/changelog/' },
     ],
     sidebar: {
@@ -55,7 +55,7 @@ export default defineConfig({
         {
           text: '公告',
           items: [
-            { text: '公告维护', link: '/announcements/' },
+            { text: '公告中心', link: '/announcements/' },
             { text: '公告历史', link: '/announcements/history' },
           ],
         },

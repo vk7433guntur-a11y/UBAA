@@ -1,42 +1,33 @@
-# 公告维护
+# 公告中心
 
-UBAA 服务端通过 `GET /api/v1/app/announcement` 提供启动公告。客户端获取到公告后展示标题、正文、确认按钮和可选链接，并在本地记录已读状态。
+UBAA 通过应用内弹窗通知用户查看公告，公告详情统一发布在本文档站点。
 
-## 配置文件
+## 工作流程
 
-服务端默认读取运行目录下的 `announcement.json`。该文件包含：
+1. **撰写详情** — 在 `docs/announcements/` 下新建 Markdown 文件，写清公告内容。
+2. **配置服务端** — 更新服务器 `announcement.json`，`linkUrl` 指向文档页，`content` 仅写简短摘要。
+3. **客户端展示** — 应用启动时拉取公告，弹窗显示标题与摘要，用户点击按钮跳转到本文档页阅读全文。
+
+### announcement.json 示例
 
 ```json
 {
   "enabled": true,
-  "id": "2026-05-07-maintenance",
-  "title": "维护公告",
-  "content": "公告正文，可包含普通文本和链接。",
-  "confirmText": "知道了",
-  "linkUrl": "https://example.com"
+  "id": "2026-05-09-001",
+  "title": "官方用户群",
+  "content": "加入官方 QQ/微信群，获取最新消息和技术支持！",
+  "confirmText": "查看详情",
+  "linkUrl": "https://docs.buaa.team/announcements/2026-05-09-001"
 }
 ```
 
-字段规则：
+::: tip
+`content` 仅用于应用内弹窗的简短摘要，完整内容写在本文档站点的对应页面中。
+:::
 
-- `enabled=false` 时接口返回 `204 No Content`。
-- `id`、`title`、`content` 为空时不展示公告。
-- `confirmText` 和 `linkUrl` 可省略。
+## 维护规则
+
+- 每次发布新公告，在上表追加一行，并创建对应的详情页。
+- `announcement.json` 中的 `id` 必须与文件名一致。
 - 更新公告时必须更换 `id`，否则已读用户不会再次看到。
-
-## 发布流程
-
-1. 在服务器运行目录更新 `announcement.json`。
-2. 确认 JSON 可被 kotlinx.serialization 解析。
-3. 请求 `/api/v1/app/announcement` 验证状态码和内容。
-4. 客户端链接由 `ReleaseNotesText` 支持 Markdown 链接和裸 URL。
-
-## 来源文件
-
-- `server/src/main/kotlin/cn/edu/ubaa/announcement/AnnouncementRoutes.kt`
-- `server/src/main/kotlin/cn/edu/ubaa/announcement/AnnouncementService.kt`
-- `shared/src/commonMain/kotlin/cn/edu/ubaa/api/auth/AnnouncementService.kt`
-- `shared/src/commonMain/kotlin/cn/edu/ubaa/api/storage/AnnouncementReadStore.kt`
-- `composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/common/components/ReleaseNotesText.kt`
-- `server/src/test/kotlin/cn/edu/ubaa/announcement/AnnouncementRoutesTest.kt`
-- `server/src/test/kotlin/cn/edu/ubaa/announcement/AnnouncementServiceTest.kt`
+- 不在仓库中提交敏感信息或临时凭据。
