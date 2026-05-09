@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  UPDATE_DOWNLOAD_URL: https://bhpan.buaa.edu.cn/link/AA61B7EDC6F2BC4AF5B040FAF0563AD160
+  UPDATE_DOWNLOAD_URL: https://github.com/BUAASubnet/UBAA/releases
 
 jobs:
   test-android:
