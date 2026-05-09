@@ -4,7 +4,7 @@
 
 ## 应用 Release
 
-`.github/workflows/release.yml` 在 GitHub Release published 或手动触发时构建：
+`.github/workflows/release.yml` 在 GitHub Release published 或手动触发时构建，并把产物直接上传到当前 Release：
 
 - Android APK。
 - Desktop Linux deb。
