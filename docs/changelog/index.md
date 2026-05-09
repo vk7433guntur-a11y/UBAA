@@ -6,7 +6,19 @@ UBAA 的版本号由 `gradle.properties` 管理，发布资产通过 GitHub Rele
 
 ---
 
-## v1.7.1 <Badge type="tip" text="Latest" />
+## v1.7.2 <Badge type="tip" text="Latest" />
+
+**发布日期：** 2026-05-09
+
+- 成绩查询：修复加权平均分计算，新增算数平均分
+- 座位预约：新增图书馆座位预约功能
+- 登录：适配 SSO 密码过期提醒
+- 性能优化：优化了部分功能的性能
+- 文档：新增[文档](https://www.buaa.team)
+
+[GitHub Release](https://github.com/BUAASubnet/UBAA/releases/tag/v1.7.2)
+
+## v1.7.1
 
 **发布日期：** 2026-05-07
 
