@@ -8,7 +8,7 @@ hero:
   actions:
     - theme: brand
       text: 立刻下载
-      link: https://github.com/BUAASubnet/UBAA/releases
+      link: https://bhpan.buaa.edu.cn/link/AA61B7EDC6F2BC4AF5B040FAF0563AD160
     - theme: alt
       text: 在线使用
       link: https://app.buaa.team
