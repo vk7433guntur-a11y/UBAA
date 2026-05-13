@@ -18,6 +18,7 @@ class ScheduleViewModel(
 ) : ViewModel() {
   private var todayLoadedOnce = false
   private var scheduleLoadedOnce = false
+  private var currentWeekLoadedOnce = false
 
   private val _uiState = MutableStateFlow(ScheduleUiState())
   /** 周课表选择与展示的状态流。 */
@@ -33,6 +34,13 @@ class ScheduleViewModel(
   }
 
   internal fun hasTodayLoaded(): Boolean = todayLoadedOnce
+
+  fun ensureCurrentWeekLoaded(forceRefresh: Boolean = false) {
+    if (!forceRefresh && currentWeekLoadedOnce) return
+    loadCurrentWeek(forceRefresh)
+  }
+
+  internal fun hasCurrentWeekLoaded(): Boolean = currentWeekLoadedOnce
 
   fun ensureScheduleLoaded(forceRefresh: Boolean = false) {
     if (!forceRefresh && scheduleLoadedOnce) return
@@ -54,6 +62,21 @@ class ScheduleViewModel(
             _todayScheduleState.value =
                 _todayScheduleState.value.copy(isLoading = false, error = it.message ?: "加载今日课表失败")
           }
+    }
+  }
+
+  private fun loadCurrentWeek(forceRefresh: Boolean = false) {
+    currentWeekLoadedOnce = true
+    viewModelScope.launch {
+      termRepository.getTerms(forceRefresh).onSuccess { terms ->
+        val selectedTerm = terms.find { it.selected } ?: terms.firstOrNull()
+        if (selectedTerm == null) return@onSuccess
+        _uiState.value = _uiState.value.copy(terms = terms, selectedTerm = selectedTerm)
+        scheduleApi.getWeeks(selectedTerm.itemCode).onSuccess { weeks ->
+          val currentWeek = weeks.find { it.curWeek } ?: weeks.firstOrNull()
+          _uiState.value = _uiState.value.copy(weeks = weeks, currentWeek = currentWeek)
+        }
+      }
     }
   }
 
@@ -93,7 +116,12 @@ class ScheduleViewModel(
           .onSuccess { weeks ->
             val currentWeek = weeks.find { it.curWeek } ?: weeks.firstOrNull()
             _uiState.value =
-                _uiState.value.copy(isLoading = false, weeks = weeks, selectedWeek = currentWeek)
+                _uiState.value.copy(
+                    isLoading = false,
+                    weeks = weeks,
+                    currentWeek = currentWeek,
+                    selectedWeek = currentWeek,
+                )
             currentWeek?.let { loadWeeklySchedule(term, it) }
           }
           .onFailure {
@@ -135,6 +163,7 @@ data class ScheduleUiState(
     val isLoading: Boolean = false,
     val terms: List<Term> = emptyList(),
     val weeks: List<Week> = emptyList(),
+    val currentWeek: Week? = null,
     val selectedTerm: Term? = null,
     val selectedWeek: Week? = null,
     val weeklySchedule: WeeklySchedule? = null,
