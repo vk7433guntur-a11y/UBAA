@@ -40,7 +40,8 @@ class ScheduleViewModel(
     loadCurrentWeek(forceRefresh)
   }
 
-  internal fun hasCurrentWeekLoaded(): Boolean = currentWeekLoadedOnce
+  internal fun hasCurrentWeekLoaded(): Boolean =
+      currentWeekLoadedOnce || _uiState.value.currentWeek != null
 
   fun ensureScheduleLoaded(forceRefresh: Boolean = false) {
     if (!forceRefresh && scheduleLoadedOnce) return
@@ -66,7 +67,6 @@ class ScheduleViewModel(
   }
 
   private fun loadCurrentWeek(forceRefresh: Boolean = false) {
-    currentWeekLoadedOnce = true
     viewModelScope.launch {
       termRepository.getTerms(forceRefresh).onSuccess { terms ->
         val selectedTerm = terms.find { it.selected } ?: terms.firstOrNull()
@@ -74,6 +74,7 @@ class ScheduleViewModel(
         _uiState.value = _uiState.value.copy(terms = terms, selectedTerm = selectedTerm)
         scheduleApi.getWeeks(selectedTerm.itemCode).onSuccess { weeks ->
           val currentWeek = weeks.find { it.curWeek } ?: weeks.firstOrNull()
+          currentWeekLoadedOnce = currentWeek != null
           _uiState.value = _uiState.value.copy(weeks = weeks, currentWeek = currentWeek)
         }
       }
@@ -115,6 +116,7 @@ class ScheduleViewModel(
           .getWeeks(term.itemCode)
           .onSuccess { weeks ->
             val currentWeek = weeks.find { it.curWeek } ?: weeks.firstOrNull()
+            currentWeekLoadedOnce = currentWeek != null
             _uiState.value =
                 _uiState.value.copy(
                     isLoading = false,
