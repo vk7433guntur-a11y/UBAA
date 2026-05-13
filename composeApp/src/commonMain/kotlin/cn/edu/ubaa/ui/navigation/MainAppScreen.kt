@@ -326,7 +326,7 @@ fun MainAppScreen(
             !bykcViewModel.hasChosenCoursesLoaded() ||
             cgyyViewModel?.hasOrdersLoaded() != true ||
             !scheduleViewModel.hasCurrentWeekLoaded() ||
-            (shouldLoadYgdkHomeOverview && ygdkViewModel?.hasOverviewLoaded() != true)
+            (shouldLoadYgdkHomeOverview && ygdkViewModel.hasOverviewLoaded() != true)
     homeBootstrapCoordinator.restart(
         HomeBootstrapActions(
             loadTodaySchedule = { force ->
@@ -340,7 +340,7 @@ fun MainAppScreen(
             loadYgdk = { force ->
               scheduleViewModel.ensureCurrentWeekLoaded(forceRefresh = force)
               if (shouldLoadYgdkHomeOverview) {
-                ygdkViewModel?.ensureOverviewLoaded(forceRefresh = force)
+                ygdkViewModel.ensureOverviewLoaded(forceRefresh = force)
               }
             },
         ),
@@ -501,22 +501,23 @@ fun MainAppScreen(
       ygdkUiState.homeReminderEnabled,
   ) {
     if (!ygdkUiState.homeReminderEnabled) return@LaunchedEffect
+    val viewModel = ygdkViewModel ?: return@LaunchedEffect
     val summary = ygdkUiState.overview?.summary ?: return@LaunchedEffect
     ygdkWeekReminderKey?.let { key ->
       if ((summary.weekCount ?: 0) >= 4) {
-        ygdkViewModel?.markHomeReminderWeekDone(key)
+        viewModel.markHomeReminderWeekDone(key)
       }
     }
     ygdkTermReminderKey?.let { key ->
       if (summary.termCount >= 16) {
-        ygdkViewModel?.markHomeReminderTermDone(key)
+        viewModel.markHomeReminderTermDone(key)
       }
     }
   }
 
   LaunchedEffect(currentScreen, currentWeek, shouldLoadYgdkHomeOverview) {
     if (currentScreen == AppScreen.HOME && shouldLoadYgdkHomeOverview) {
-      ygdkViewModel?.ensureOverviewLoaded()
+      ygdkViewModel.ensureOverviewLoaded()
     }
   }
 

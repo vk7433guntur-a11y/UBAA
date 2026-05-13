@@ -10,10 +10,13 @@ import cn.edu.ubaa.model.dto.SpocSubmissionStatus
 import cn.edu.ubaa.model.dto.Week
 import cn.edu.ubaa.model.dto.YgdkOverviewResponse
 import kotlin.time.Duration.Companion.minutes
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
 
 internal enum class HomeTodoSource(val label: String) {
@@ -84,6 +87,7 @@ internal fun buildHomeTodoItems(
                 reminderEnabled = ygdkReminderEnabled,
                 weekDone = ygdkWeekDone,
                 termDone = ygdkTermDone,
+                now = now,
             )
             ?.let(::add)
       }
@@ -305,6 +309,7 @@ internal fun buildYgdkTodoItem(
     reminderEnabled: Boolean,
     weekDone: Boolean,
     termDone: Boolean,
+    now: LocalDateTime,
 ): HomeTodoItem? {
   if (!reminderEnabled || weekDone || termDone) return null
   val week = currentWeek ?: return null
@@ -315,7 +320,7 @@ internal fun buildYgdkTodoItem(
   val termCount = summary.termCount
   if (weekCount >= 4 || termCount >= 16) return null
 
-  val dueTime = week.endDate.toWeekEndDateTime() ?: return null
+  val dueTime = now.currentWeekSundayEnd()
   return HomeTodoItem(
       id = "ygdk:${week.term}:$weekNumber",
       source = HomeTodoSource.YGDK,
@@ -337,13 +342,21 @@ private fun parseClockTime(value: String): LocalTime? {
   return runCatching { LocalTime(hour, minute, second) }.getOrNull()
 }
 
-private fun String.toWeekEndDateTime(): LocalDateTime? =
-    runCatching {
-          LocalDateTime(
-              date = LocalDate.parse(this),
-              time = LocalTime(hour = 23, minute = 59, second = 59),
-          )
-        }
-        .getOrNull()
+private fun LocalDateTime.currentWeekSundayEnd(): LocalDateTime =
+    LocalDateTime(
+        date = date.plus(DatePeriod(days = date.daysUntilSunday())),
+        time = LocalTime(hour = 23, minute = 59, second = 59),
+    )
+
+private fun LocalDate.daysUntilSunday(): Int =
+    when (dayOfWeek) {
+      DayOfWeek.MONDAY -> 6
+      DayOfWeek.TUESDAY -> 5
+      DayOfWeek.WEDNESDAY -> 4
+      DayOfWeek.THURSDAY -> 3
+      DayOfWeek.FRIDAY -> 2
+      DayOfWeek.SATURDAY -> 1
+      DayOfWeek.SUNDAY -> 0
+    }
 
 private fun Int.toPaddedString(): String = toString().padStart(2, '0')
