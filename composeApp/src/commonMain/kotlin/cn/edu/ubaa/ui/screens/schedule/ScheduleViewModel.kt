@@ -40,8 +40,7 @@ class ScheduleViewModel(
     loadCurrentWeek(forceRefresh)
   }
 
-  internal fun hasCurrentWeekLoaded(): Boolean =
-      currentWeekLoadedOnce || _uiState.value.currentWeek != null
+  internal fun hasCurrentWeekLoaded(): Boolean = currentWeekLoadedOnce
 
   fun ensureScheduleLoaded(forceRefresh: Boolean = false) {
     if (!forceRefresh && scheduleLoadedOnce) return
@@ -116,7 +115,6 @@ class ScheduleViewModel(
           .getWeeks(term.itemCode)
           .onSuccess { weeks ->
             val currentWeek = weeks.find { it.curWeek } ?: weeks.firstOrNull()
-            currentWeekLoadedOnce = currentWeek != null
             _uiState.value =
                 _uiState.value.copy(
                     isLoading = false,

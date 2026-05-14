@@ -100,6 +100,47 @@ class ScheduleViewModelTest {
     assertEquals(11, viewModel.uiState.value.currentWeek?.serialNumber)
   }
 
+  @Test
+  fun `schedule browsing does not satisfy current week bootstrap cache`() = runTest {
+    setMainDispatcher(testScheduler)
+    val browsingTerm =
+        sampleTerm(itemCode = "2024-2025-1", itemName = "2024-2025学年第一学期", selected = false)
+    val currentTerm = sampleTerm()
+    val scheduleBackend =
+        FakeScheduleApiBackend(
+            weekResults =
+                mutableListOf(
+                    Result.success(
+                        listOf(sampleWeek(term = browsingTerm.itemCode, serialNumber = 3))
+                    ),
+                    Result.success(
+                        listOf(sampleWeek(term = currentTerm.itemCode, serialNumber = 11))
+                    ),
+                )
+        )
+    val termsBackend =
+        FakeScheduleApiBackend(termResults = mutableListOf(Result.success(listOf(currentTerm))))
+    val viewModel =
+        ScheduleViewModel(
+            scheduleApi = ScheduleApi { scheduleBackend },
+            termRepository = TermRepository(ScheduleApi { termsBackend }),
+        )
+
+    viewModel.loadWeeks(browsingTerm)
+    advanceUntilIdle()
+
+    assertFalse(viewModel.hasCurrentWeekLoaded())
+    assertEquals(1, scheduleBackend.weekCalls)
+    assertEquals(3, viewModel.uiState.value.currentWeek?.serialNumber)
+
+    viewModel.ensureCurrentWeekLoaded()
+    advanceUntilIdle()
+
+    assertTrue(viewModel.hasCurrentWeekLoaded())
+    assertEquals(2, scheduleBackend.weekCalls)
+    assertEquals(11, viewModel.uiState.value.currentWeek?.serialNumber)
+  }
+
   private fun setMainDispatcher(testScheduler: TestCoroutineScheduler) {
     Dispatchers.setMain(StandardTestDispatcher(testScheduler))
   }
@@ -136,22 +177,29 @@ class ScheduleViewModelTest {
   }
 
   companion object {
-    private fun sampleTerm(): Term =
+    private fun sampleTerm(
+        itemCode: String = "2025-2026-2",
+        itemName: String = "2025-2026学年第二学期",
+        selected: Boolean = true,
+    ): Term =
         Term(
-            itemCode = "2025-2026-2",
-            itemName = "2025-2026学年第二学期",
-            selected = true,
+            itemCode = itemCode,
+            itemName = itemName,
+            selected = selected,
             itemIndex = 1,
         )
 
-    private fun sampleWeek(): Week =
+    private fun sampleWeek(
+        term: String = "2025-2026-2",
+        serialNumber: Int = 11,
+    ): Week =
         Week(
             startDate = "2026-03-23",
             endDate = "2026-03-29",
-            term = "2025-2026-2",
+            term = term,
             curWeek = true,
-            serialNumber = 11,
-            name = "第11周",
+            serialNumber = serialNumber,
+            name = "第${serialNumber}周",
         )
   }
 }
