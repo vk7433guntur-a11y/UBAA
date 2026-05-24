@@ -1,5 +1,11 @@
 package cn.edu.ubaa.signin
 
+import cn.edu.ubaa.api.SIGNIN_LOGIN_REDIRECT_LIMIT
+import cn.edu.ubaa.api.SIGNIN_MY_CENTER_URL
+import cn.edu.ubaa.api.extractSigninLoginNameFromUrl
+import cn.edu.ubaa.api.resolveSigninRedirectUrl
+import cn.edu.ubaa.auth.GlobalSessionManager
+import cn.edu.ubaa.auth.SessionManager
 import cn.edu.ubaa.metrics.AppObservability
 import cn.edu.ubaa.model.dto.SigninClassDto
 import cn.edu.ubaa.utils.VpnCipher
@@ -24,46 +30,40 @@ import kotlinx.serialization.json.*
  *
  * @param studentId 学号。
  */
-class SigninClient(private val studentId: String) {
+class SigninClient(
+    private val studentId: String,
+    private val sessionManager: SessionManager = GlobalSessionManager.instance,
+    private val client: HttpClient = buildSigninHttpClient(),
+) {
   private val json = Json { ignoreUnknownKeys = true }
-
-  /** 创建专用于 iclass 的 HttpClient，配置较宽松的 SSL 验证。 */
-  private val client =
-      HttpClient(CIO) {
-        install(ContentNegotiation) { json(json) }
-        install(HttpTimeout) { requestTimeoutMillis = 30000 }
-        engine {
-          https {
-            trustManager =
-                object : X509TrustManager {
-                  override fun checkClientTrusted(c: Array<out X509Certificate>?, a: String?) {}
-
-                  override fun checkServerTrusted(c: Array<out X509Certificate>?, a: String?) {}
-
-                  override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-                }
-          }
-        }
-      }
 
   private var userId: String? = null
   private var sessionId: String? = null
   private val loginMutex = Mutex()
 
-  /** 执行 iclass 登录。目前 iclass 支持学号直接登录（无密码模式或特定逻辑）。 */
+  private suspend fun ensureSession(): SessionManager.UserSession {
+    return sessionManager.requireSession(studentId)
+  }
+
+  /** 执行 iclass 登录。先通过 SSO 跳转页获取 loginName，再用 loginName 完成 app 登录。 */
   private suspend fun login(): Boolean {
     if (userId != null && sessionId != null) return true
     return loginMutex.withLock {
       if (userId != null && sessionId != null) return@withLock true
 
       try {
+        val loginName =
+            resolveLoginName()
+                ?: run {
+                  return@withLock false
+                }
         AppObservability.observeUpstreamRequest("iclass", "login") {
           val response =
               client.get(
                   VpnCipher.toVpnUrl("https://iclass.buaa.edu.cn:8347/app/user/login.action")
               ) {
                 parameter("password", "")
-                parameter("phone", studentId)
+                parameter("phone", loginName)
                 parameter("userLevel", "1")
                 parameter("verificationType", "2")
                 parameter("verificationUrl", "")
@@ -87,6 +87,37 @@ class SigninClient(private val studentId: String) {
       } catch (_: Exception) {
         false
       }
+    }
+  }
+
+  private suspend fun resolveLoginName(): String? {
+    val noRedirectClient = ensureSession().client.config { followRedirects = false }
+    try {
+      var currentUrl = VpnCipher.toVpnUrl(SIGNIN_MY_CENTER_URL)
+      repeat(SIGNIN_LOGIN_REDIRECT_LIMIT) {
+        val response =
+            AppObservability.observeUpstreamRequest("iclass", "sso_jump_my_center") {
+              noRedirectClient.get(currentUrl)
+            }
+        val finalUrl = VpnCipher.fromVpnUrl(response.call.request.url.toString())
+        extractSigninLoginNameFromUrl(finalUrl)?.let {
+          return it
+        }
+
+        val location = response.headers[HttpHeaders.Location]?.let(VpnCipher::fromVpnUrl)
+        location?.let {
+          extractSigninLoginNameFromUrl(it)?.let { loginName ->
+            return loginName
+          }
+        }
+        if (response.status.value !in 300..399 || location.isNullOrBlank()) {
+          return null
+        }
+        currentUrl = VpnCipher.toVpnUrl(resolveSigninRedirectUrl(finalUrl, location) ?: return null)
+      }
+      return null
+    } finally {
+      noRedirectClient.close()
     }
   }
 
@@ -190,3 +221,22 @@ class SigninClient(private val studentId: String) {
     sessionId = null
   }
 }
+
+/** 创建专用于 iclass 的 HttpClient，配置较宽松的 SSL 验证。 */
+private fun buildSigninHttpClient(): HttpClient =
+    HttpClient(CIO) {
+      install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+      install(HttpTimeout) { requestTimeoutMillis = 30000 }
+      engine {
+        https {
+          trustManager =
+              object : X509TrustManager {
+                override fun checkClientTrusted(c: Array<out X509Certificate>?, a: String?) {}
+
+                override fun checkServerTrusted(c: Array<out X509Certificate>?, a: String?) {}
+
+                override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+              }
+        }
+      }
+    }
