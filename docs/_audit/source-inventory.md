@@ -358,6 +358,7 @@ Generated during the docs implementation pass on 2026-05-07. The scan excluded `
 | server/src/test/kotlin/cn/edu/ubaa/spoc/SpocRoutesTest.kt | 已覆盖 | docs/features/spoc.md |
 | server/src/test/kotlin/cn/edu/ubaa/spoc/SpocServiceTest.kt | 已覆盖 | docs/features/spoc.md |
 | server/src/test/kotlin/cn/edu/ubaa/spoc/SpocSupportTest.kt | 已覆盖 | docs/features/spoc.md |
+| server/src/test/kotlin/cn/edu/ubaa/utils/VpnCipherTest.kt | 已覆盖 | docs/features/signin.md |
 | server/src/test/kotlin/cn/edu/ubaa/version/AppVersionServiceTest.kt | 已覆盖 | docs/tech/testing.md |
 | server/src/test/kotlin/cn/edu/ubaa/ygdk/YgdkRoutesTest.kt | 已覆盖 | docs/features/ygdk.md |
 | server/src/test/kotlin/cn/edu/ubaa/ygdk/YgdkServiceTest.kt | 已覆盖 | docs/features/ygdk.md |
@@ -390,6 +391,7 @@ Generated during the docs implementation pass on 2026-05-07. The scan excluded `
 | shared/src/commonMain/kotlin/cn/edu/ubaa/api/feature/SigninApi.kt | 已覆盖 | docs/features/signin.md |
 | shared/src/commonMain/kotlin/cn/edu/ubaa/api/feature/SpocApi.kt | 已覆盖 | docs/features/spoc.md |
 | shared/src/commonMain/kotlin/cn/edu/ubaa/api/feature/YgdkApi.kt | 已覆盖 | docs/features/ygdk.md |
+| shared/src/commonMain/kotlin/cn/edu/ubaa/api/SigninLoginNameSupport.kt | 已覆盖 | docs/features/signin.md |
 | shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalBykcApi.kt | 已覆盖 | docs/features/bykc.md |
 | shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalBykcCrypto.kt | 已覆盖 | docs/features/bykc.md |
 | shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalCgyyApi.kt | 已覆盖 | docs/features/cgyy.md |
@@ -458,6 +460,7 @@ Generated during the docs implementation pass on 2026-05-07. The scan excluded `
 | shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalJudgeApiBackendTest.kt | 已覆盖 | docs/features/judge.md |
 | shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalScheduleApiBackendTest.kt | 已覆盖 | docs/tech/shared-api.md |
 | shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalSigninApiBackendTest.kt | 已覆盖 | docs/features/signin.md |
+| shared/src/commonTest/kotlin/cn/edu/ubaa/api/SigninLoginNameSupportTest.kt | 已覆盖 | docs/features/signin.md |
 | shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalSpocApiBackendTest.kt | 已覆盖 | docs/features/spoc.md |
 | shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalSpocSupportTest.kt | 已覆盖 | docs/features/spoc.md |
 | shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalWebVpnSupportTest.kt | 已覆盖 | docs/tech/shared-api.md |
@@ -495,6 +498,7 @@ Generated during the docs implementation pass on 2026-05-07. The scan excluded `
 | shared/src/jvmMain/kotlin/cn/edu/ubaa/api/PlatformRsaPkcs1Encrypt.jvm.kt | 已覆盖 | docs/tech/shared-api.md |
 | shared/src/jvmMain/kotlin/cn/edu/ubaa/Platform.jvm.kt | 已覆盖 | docs/tech/shared-api.md |
 | shared/src/jvmTest/kotlin/cn/edu/ubaa/api/LocalJudgeRealIntegrationTest.kt | 已覆盖 | docs/features/judge.md |
+| shared/src/jvmTest/kotlin/cn/edu/ubaa/api/LocalSigninRealIntegrationTest.kt | 已覆盖 | docs/features/signin.md |
 | shared/src/wasmJsMain/kotlin/cn/edu/ubaa/api/ApiClient.wasm.kt | 已覆盖 | docs/tech/shared-api.md |
 | shared/src/wasmJsMain/kotlin/cn/edu/ubaa/api/PlatformAesCbcNoPadding.wasmJs.kt | 已覆盖 | docs/tech/shared-api.md |
 | shared/src/wasmJsMain/kotlin/cn/edu/ubaa/api/PlatformAesCfbNoPadding.wasmJs.kt | 已覆盖 | docs/tech/shared-api.md |

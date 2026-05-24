@@ -1,6 +1,10 @@
 package cn.edu.ubaa.api.local
 
+import cn.edu.ubaa.api.SIGNIN_LOGIN_REDIRECT_LIMIT
+import cn.edu.ubaa.api.SIGNIN_MY_CENTER_URL
+import cn.edu.ubaa.api.extractSigninLoginNameFromUrl
 import cn.edu.ubaa.api.feature.SigninApiBackend
+import cn.edu.ubaa.api.resolveSigninRedirectUrl
 import cn.edu.ubaa.model.dto.SigninActionResponse
 import cn.edu.ubaa.model.dto.SigninClassDto
 import cn.edu.ubaa.model.dto.SigninStatusResponse
@@ -11,6 +15,7 @@ import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
 import kotlin.time.Clock
@@ -125,12 +130,13 @@ internal class LocalSigninApiBackend : SigninApiBackend {
   }
 
   private suspend fun login(studentId: String): LocalSigninSession? {
+    val loginName = resolveLoginName() ?: return null
     val response =
         LocalUpstreamClientProvider.shared().get(
             localUpstreamUrl("https://iclass.buaa.edu.cn:8347/app/user/login.action")
         ) {
           parameter("password", "")
-          parameter("phone", studentId)
+          parameter("phone", loginName)
           parameter("userLevel", "1")
           parameter("verificationType", "2")
           parameter("verificationUrl", "")
@@ -149,6 +155,35 @@ internal class LocalSigninApiBackend : SigninApiBackend {
     val sessionId =
         result["sessionId"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() } ?: return null
     return LocalSigninSession(userId = userId, sessionId = sessionId)
+  }
+
+  private suspend fun resolveLoginName(): String? {
+    val client = LocalUpstreamClientProvider.newNoRedirectClient()
+    return try {
+      var currentUrl = localUpstreamUrl(SIGNIN_MY_CENTER_URL)
+      repeat(SIGNIN_LOGIN_REDIRECT_LIMIT) {
+        val response = client.get(currentUrl)
+        val finalUrl = LocalWebVpnSupport.fromWebVpnUrl(response.call.request.url.toString())
+        extractSigninLoginNameFromUrl(finalUrl)?.let {
+          return it
+        }
+
+        val location =
+            response.headers[HttpHeaders.Location]?.let(LocalWebVpnSupport::fromWebVpnUrl)
+        location?.let {
+          extractSigninLoginNameFromUrl(it)?.let { loginName ->
+            return loginName
+          }
+        }
+        if (response.status.value !in 300..399 || location.isNullOrBlank()) {
+          return null
+        }
+        currentUrl = localUpstreamUrl(resolveSigninRedirectUrl(finalUrl, location) ?: return null)
+      }
+      null
+    } finally {
+      client.close()
+    }
   }
 }
 

@@ -62,19 +62,38 @@ class LocalSigninApiBackendTest {
   @Test
   fun `signin api uses direct upstream backend to fetch today classes`() = runTest {
     val expectedDate = currentSigninDate()
+    val loginName = "Rjc1QkJDMUMxNzVENkY0NkZCNzFDMEM5RjYwNzg4RDg="
     val engine = MockEngine { request ->
-      when (request.url.toString()) {
-        "https://iclass.buaa.edu.cn:8347/app/user/login.action?password=&phone=22373333&userLevel=1&verificationType=2&verificationUrl=" ->
+      when {
+        request.url.host == "iclass.buaa.edu.cn" &&
+            request.url.port == 8346 &&
+            request.url.parameters["type"] == "jumpMyCenter" ->
             respond(
-                content =
-                    ByteReadChannel(
-                        """{"STATUS":0,"result":{"id":"user-1","sessionId":"session-1"}}"""
-                    ),
-                status = HttpStatusCode.OK,
+                content = ByteReadChannel(""),
+                status = HttpStatusCode.Found,
                 headers =
-                    headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                    headersOf(
+                        HttpHeaders.Location,
+                        "https://iclass.buaa.edu.cn:8346/?loginName=$loginName&type=jumpMyCenter#/MyCenter",
+                    ),
             )
-        "https://iclass.buaa.edu.cn:8347/app/course/get_stu_course_sched.action?id=user-1&dateStr=$expectedDate" -> {
+        request.url.host == "iclass.buaa.edu.cn" &&
+            request.url.port == 8347 &&
+            request.url.encodedPath == "/app/user/login.action" -> {
+          assertEquals(loginName, request.url.parameters["phone"])
+          assertEquals("1", request.url.parameters["userLevel"])
+          assertEquals("2", request.url.parameters["verificationType"])
+          respond(
+              content =
+                  ByteReadChannel(
+                      """{"STATUS":0,"result":{"id":"user-1","sessionId":"session-1"}}"""
+                  ),
+              status = HttpStatusCode.OK,
+              headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+          )
+        }
+        request.url.toString() ==
+            "https://iclass.buaa.edu.cn:8347/app/course/get_stu_course_sched.action?id=user-1&dateStr=$expectedDate" -> {
           assertEquals("session-1", request.headers["sessionId"])
           respond(
               content =
@@ -112,27 +131,132 @@ class LocalSigninApiBackendTest {
   }
 
   @Test
-  fun `signin api uses direct upstream backend to perform signin`() = runTest {
+  fun `signin api follows iclass my center redirect chain before app login`() = runTest {
+    val expectedDate = currentSigninDate()
+    val loginName = "Rjc1QkJDMUMxNzVENkY0NkZCNzFDMEM5RjYwNzg4RDg="
+    val visitedJumpUrls = mutableListOf<String>()
+    var appLoginRequests = 0
     val engine = MockEngine { request ->
-      when (request.url.toString()) {
-        "https://iclass.buaa.edu.cn:8347/app/user/login.action?password=&phone=22373333&userLevel=1&verificationType=2&verificationUrl=" ->
+      when {
+        request.url.host == "iclass.buaa.edu.cn" &&
+            request.url.port == 8346 &&
+            request.url.parameters["type"] == "jumpMyCenter" &&
+            request.url.parameters["loginName"] == null -> {
+          visitedJumpUrls += request.url.toString()
+          if (visitedJumpUrls.size > 1) {
             respond(
-                content =
-                    ByteReadChannel(
-                        """{"STATUS":0,"result":{"id":"user-1","sessionId":"session-1"}}"""
+                content = ByteReadChannel(""),
+                status = HttpStatusCode.Found,
+                headers =
+                    headersOf(
+                        HttpHeaders.Location,
+                        "https://iclass.buaa.edu.cn:8346/?loginName=$loginName&type=jumpMyCenter#/MyCenter",
                     ),
+            )
+          } else {
+            respond(
+                content = ByteReadChannel(""),
+                status = HttpStatusCode.Found,
+                headers =
+                    headersOf(
+                        HttpHeaders.Location,
+                        "https://sso.buaa.edu.cn/login?service=https%3A%2F%2Ficlass.buaa.edu.cn%3A8346%2F%3Ftype%3DjumpMyCenter",
+                    ),
+            )
+          }
+        }
+        request.url.host == "sso.buaa.edu.cn" && request.url.encodedPath == "/login" ->
+            respond(
+                content = ByteReadChannel(""),
+                status = HttpStatusCode.Found,
+                headers =
+                    headersOf(
+                        HttpHeaders.Location,
+                        "https://iclass.buaa.edu.cn:8346/cas-login?ticket=ST-test",
+                    ),
+            )
+        request.url.host == "iclass.buaa.edu.cn" &&
+            request.url.port == 8346 &&
+            request.url.encodedPath == "/cas-login" ->
+            respond(
+                content = ByteReadChannel(""),
+                status = HttpStatusCode.Found,
+                headers = headersOf(HttpHeaders.Location, "/?type=jumpMyCenter#/MyCenter"),
+            )
+        request.url.host == "iclass.buaa.edu.cn" &&
+            request.url.port == 8347 &&
+            request.url.encodedPath == "/app/user/login.action" -> {
+          assertEquals(loginName, request.url.parameters["phone"])
+          appLoginRequests++
+          respond(
+              content =
+                  ByteReadChannel(
+                      """{"STATUS":0,"result":{"id":"user-1","sessionId":"session-1"}}"""
+                  ),
+              status = HttpStatusCode.OK,
+              headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+          )
+        }
+        request.url.toString() ==
+            "https://iclass.buaa.edu.cn:8347/app/course/get_stu_course_sched.action?id=user-1&dateStr=$expectedDate" ->
+            respond(
+                content = ByteReadChannel("""{"STATUS":0,"result":[]}"""),
                 status = HttpStatusCode.OK,
                 headers =
                     headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
             )
-        "http://iclass.buaa.edu.cn:8081/app/common/get_timestamp.action" ->
+        else -> error("Unexpected url: ${request.url}")
+      }
+    }
+    useMockUpstream(engine)
+
+    val result = SigninApi().getTodayClasses()
+
+    assertTrue(result.isSuccess, result.exceptionOrNull()?.message.orEmpty())
+    assertEquals(2, visitedJumpUrls.size)
+    assertEquals(1, appLoginRequests)
+  }
+
+  @Test
+  fun `signin api uses direct upstream backend to perform signin`() = runTest {
+    val loginName = "Rjc1QkJDMUMxNzVENkY0NkZCNzFDMEM5RjYwNzg4RDg="
+    val engine = MockEngine { request ->
+      when {
+        request.url.host == "iclass.buaa.edu.cn" &&
+            request.url.port == 8346 &&
+            request.url.parameters["type"] == "jumpMyCenter" ->
+            respond(
+                content = ByteReadChannel(""),
+                status = HttpStatusCode.Found,
+                headers =
+                    headersOf(
+                        HttpHeaders.Location,
+                        "https://iclass.buaa.edu.cn:8346/?loginName=$loginName&type=jumpMyCenter#/MyCenter",
+                    ),
+            )
+        request.url.host == "iclass.buaa.edu.cn" &&
+            request.url.port == 8347 &&
+            request.url.encodedPath == "/app/user/login.action" -> {
+          assertEquals(loginName, request.url.parameters["phone"])
+          respond(
+              content =
+                  ByteReadChannel(
+                      """{"STATUS":0,"result":{"id":"user-1","sessionId":"session-1"}}"""
+                  ),
+              status = HttpStatusCode.OK,
+              headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+          )
+        }
+        request.url.toString() ==
+            "http://iclass.buaa.edu.cn:8081/app/common/get_timestamp.action" ->
             respond(
                 content = ByteReadChannel("""{"timestamp":"1713600000"}"""),
                 status = HttpStatusCode.OK,
                 headers =
                     headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
             )
-        "http://iclass.buaa.edu.cn:8081/app/course/stu_scan_sign.action?courseSchedId=course-1&timestamp=1713600000" ->
+        request.url.toString() ==
+            "http://iclass.buaa.edu.cn:8081/app/course/stu_scan_sign.action?courseSchedId=course-1&timestamp=1713600000" ->
             respond(
                 content =
                     ByteReadChannel(
@@ -157,10 +281,26 @@ class LocalSigninApiBackendTest {
   @Test
   fun `signin api reuses app session across repeated direct calls`() = runTest {
     val expectedDate = currentSigninDate()
+    val loginName = "Rjc1QkJDMUMxNzVENkY0NkZCNzFDMEM5RjYwNzg4RDg="
     var loginRequests = 0
     val engine = MockEngine { request ->
-      when (request.url.toString()) {
-        "https://iclass.buaa.edu.cn:8347/app/user/login.action?password=&phone=22373333&userLevel=1&verificationType=2&verificationUrl=" -> {
+      when {
+        request.url.host == "iclass.buaa.edu.cn" &&
+            request.url.port == 8346 &&
+            request.url.parameters["type"] == "jumpMyCenter" ->
+            respond(
+                content = ByteReadChannel(""),
+                status = HttpStatusCode.Found,
+                headers =
+                    headersOf(
+                        HttpHeaders.Location,
+                        "https://iclass.buaa.edu.cn:8346/?loginName=$loginName&type=jumpMyCenter#/MyCenter",
+                    ),
+            )
+        request.url.host == "iclass.buaa.edu.cn" &&
+            request.url.port == 8347 &&
+            request.url.encodedPath == "/app/user/login.action" -> {
+          assertEquals(loginName, request.url.parameters["phone"])
           loginRequests++
           respond(
               content =
@@ -171,7 +311,8 @@ class LocalSigninApiBackendTest {
               headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
           )
         }
-        "https://iclass.buaa.edu.cn:8347/app/course/get_stu_course_sched.action?id=user-1&dateStr=$expectedDate" -> {
+        request.url.toString() ==
+            "https://iclass.buaa.edu.cn:8347/app/course/get_stu_course_sched.action?id=user-1&dateStr=$expectedDate" -> {
           assertEquals("session-1", request.headers["sessionId"])
           respond(
               content = ByteReadChannel("""{"STATUS":0,"result":[]}"""),
@@ -179,14 +320,16 @@ class LocalSigninApiBackendTest {
               headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
           )
         }
-        "http://iclass.buaa.edu.cn:8081/app/common/get_timestamp.action" ->
+        request.url.toString() ==
+            "http://iclass.buaa.edu.cn:8081/app/common/get_timestamp.action" ->
             respond(
                 content = ByteReadChannel("""{"timestamp":"1713600000"}"""),
                 status = HttpStatusCode.OK,
                 headers =
                     headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
             )
-        "http://iclass.buaa.edu.cn:8081/app/course/stu_scan_sign.action?courseSchedId=course-1&timestamp=1713600000" ->
+        request.url.toString() ==
+            "http://iclass.buaa.edu.cn:8081/app/course/stu_scan_sign.action?courseSchedId=course-1&timestamp=1713600000" ->
             respond(
                 content =
                     ByteReadChannel(

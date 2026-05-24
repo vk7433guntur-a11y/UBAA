@@ -77,6 +77,36 @@ object VpnCipher {
     }
   }
 
+  /** 将 WebVPN URL 还原为标准 URL。非 WebVPN URL 会原样返回。 */
+  fun fromVpnUrl(url: String): String {
+    return try {
+      val uri = URI.create(url)
+      if (!uri.host.equals("d.buaa.edu.cn", ignoreCase = true)) return url
+      val segments = uri.rawPath.split('/').filter { it.isNotBlank() }
+      if (segments.size < 2) return url
+      val protocolParts = segments[0].split('-', limit = 2)
+      val scheme = protocolParts.firstOrNull().orEmpty()
+      val port = protocolParts.getOrNull(1)?.toIntOrNull()
+      if (scheme.isBlank()) return url
+      val host = decrypt(segments[1])
+      val authority =
+          when (port) {
+            null -> "$scheme://$host"
+            else -> "$scheme://$host:$port"
+          }
+      val pathSegments = segments.drop(2)
+      val path =
+          when {
+            pathSegments.isNotEmpty() -> pathSegments.joinToString(separator = "/", prefix = "/")
+            uri.rawPath.endsWith("/") -> "/"
+            else -> ""
+          }
+      "$authority${path.orEmpty()}${uri.rawQuery?.let { "?$it" }.orEmpty()}${uri.rawFragment?.let { "#$it" }.orEmpty()}"
+    } catch (_: Exception) {
+      url
+    }
+  }
+
   /** 将字节数组转换为十六进制字符串。 */
   private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
 
