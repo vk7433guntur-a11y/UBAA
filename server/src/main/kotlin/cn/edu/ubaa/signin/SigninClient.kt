@@ -77,8 +77,7 @@ class SigninClient(
           val jsonResponse = json.parseToJsonElement(body).jsonObject
           if (jsonResponse["STATUS"]?.jsonPrimitive?.intOrNull != 0) {
             lastLoginError =
-                jsonResponse["ERRMSG"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
-                    ?: "登录失败"
+                jsonResponse["ERRMSG"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() } ?: "登录失败"
             markUnauthenticated()
             return@observeUpstreamRequest false
           }
@@ -162,11 +161,12 @@ class SigninClient(
 
   /** 提交签到请求。 */
   suspend fun signIn(courseId: String): Pair<Boolean, String> {
-    if (userId == null || sessionId == null) if (!login()) {
-      val error = lastLoginError ?: "iclass 登录失败"
-      lastLoginError = null
-      return false to error
-    }
+    if (userId == null || sessionId == null)
+        if (!login()) {
+          val error = lastLoginError ?: "iclass 登录失败"
+          lastLoginError = null
+          return false to error
+        }
     return try {
       val serverTimestamp =
           AppObservability.observeUpstreamRequest("iclass", "get_timestamp") {

@@ -8,13 +8,10 @@ import cn.edu.ubaa.api.resolveSigninRedirectUrl
 import cn.edu.ubaa.model.dto.SigninActionResponse
 import cn.edu.ubaa.model.dto.SigninClassDto
 import cn.edu.ubaa.model.dto.SigninStatusResponse
-import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -156,8 +153,7 @@ internal class LocalSigninApiBackend : SigninApiBackend {
     val payload = json.parseToJsonElement(response.bodyAsText()).jsonObject
     if (payload["STATUS"]?.jsonPrimitive?.intOrNull != 0) {
       loginLastError =
-          payload["ERRMSG"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
-              ?: "登录失败"
+          payload["ERRMSG"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() } ?: "登录失败"
       return null
     }
 
