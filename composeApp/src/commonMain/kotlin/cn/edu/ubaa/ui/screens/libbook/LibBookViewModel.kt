@@ -65,6 +65,13 @@ class LibBookViewModel(
     loadLibraries()
   }
 
+  /** 重置内部加载标记与 UI 状态，用于连接模式切换等场景。 */
+  fun resetLoadedState() {
+    initialLoadedOnce = false
+    bookingsLoadedOnce = false
+    _uiState.value = LibBookUiState(selectedDay = _uiState.value.selectedDay)
+  }
+
   fun ensureBookingsLoaded(forceRefresh: Boolean = false) {
     if (!forceRefresh && bookingsLoadedOnce) return
     loadBookings()

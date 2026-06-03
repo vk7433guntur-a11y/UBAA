@@ -325,6 +325,9 @@ internal sealed interface LocalConnectionSessionValidationState {
   data class Valid(val session: LocalAuthSession) : LocalConnectionSessionValidationState
 
   data object Invalid : LocalConnectionSessionValidationState
+
+  /** 服务端暂时不可用（5xx），不应清除会话。 */
+  data object TransientError : LocalConnectionSessionValidationState
 }
 
 internal suspend fun validateLocalConnectionSession(): LocalConnectionSessionValidationState {
@@ -334,7 +337,11 @@ internal suspend fun validateLocalConnectionSession(): LocalConnectionSessionVal
         header("X-Requested-With", "XMLHttpRequest")
       }
   if (response.status != HttpStatusCode.OK) {
-    return LocalConnectionSessionValidationState.Invalid
+    return if (response.status.value in 500..599) {
+      LocalConnectionSessionValidationState.TransientError
+    } else {
+      LocalConnectionSessionValidationState.Invalid
+    }
   }
 
   val body = response.bodyAsText()
@@ -411,7 +418,8 @@ internal class LocalAuthServiceBackend : AuthServiceBackend {
                 )
             )
           }
-          LocalConnectionSessionValidationState.Invalid ->
+          LocalConnectionSessionValidationState.Invalid,
+          LocalConnectionSessionValidationState.TransientError ->
               Result.success(LoginPreloadResponse(captchaRequired = false))
         }
       }
@@ -502,6 +510,10 @@ internal class LocalAuthServiceBackend : AuthServiceBackend {
               validation.session.username.ifBlank { validation.session.user.schoolid },
               LoginStatsSuccessMode.MANUAL,
           )
+          // WEBVPN 模式下额外建立直连 SSO 会话，供 CGYY 等可直连的子系统使用
+          if (ConnectionRuntime.currentMode() == ConnectionMode.WEBVPN) {
+            establishDirectSsoSession(username, password)
+          }
           Result.success(
               LoginResponse(
                   user = validation.session.user,
@@ -519,6 +531,14 @@ internal class LocalAuthServiceBackend : AuthServiceBackend {
                         userFacingMessageForCode("unauthenticated", HttpStatusCode.Unauthorized),
                     status = HttpStatusCode.Unauthorized,
                     code = "unauthenticated",
+                )
+            )
+        LocalConnectionSessionValidationState.TransientError ->
+            Result.failure(
+                ApiCallException(
+                    message = "认证服务响应超时，请稍后重试",
+                    status = HttpStatusCode.ServiceUnavailable,
+                    code = "auth_upstream_timeout",
                 )
             )
       }
@@ -565,9 +585,28 @@ internal class LocalAuthServiceBackend : AuthServiceBackend {
               )
           )
         }
+        LocalConnectionSessionValidationState.TransientError ->
+            Result.failure(
+                ApiCallException(
+                    message = "认证服务响应超时，请稍后重试",
+                    status = HttpStatusCode.ServiceUnavailable,
+                    code = "auth_upstream_timeout",
+                )
+            )
       }
     } catch (e: Exception) {
-      Result.failure(e.toUserFacingApiException("认证服务响应超时，请稍后重试"))
+      val wrapped = e.toUserFacingApiException("认证服务响应超时，请稍后重试")
+      if (wrapped is ApiCallException && wrapped.code == null) {
+        Result.failure(
+            ApiCallException(
+                message = wrapped.message ?: "认证服务响应超时，请稍后重试",
+                status = wrapped.status,
+                code = "auth_upstream_timeout",
+            )
+        )
+      } else {
+        Result.failure(wrapped)
+      }
     }
   }
 
@@ -662,6 +701,44 @@ internal class LocalAuthServiceBackend : AuthServiceBackend {
     val separator = if (basePath.endsWith("/")) "" else "/"
     val relativePath = "$basePath$separator$location"
     return "$authority$relativePath"
+  }
+
+  /** WEBVPN 模式下额外建立直连 SSO 会话，供 CGYY 等可直连的子系统使用。 */
+  private suspend fun establishDirectSsoSession(username: String, password: String) {
+    val directClient =
+        LocalUpstreamClientProvider.newClient(
+            cookieStorage = LocalCookieStore.storage(ConnectionMode.DIRECT),
+            followRedirects = false,
+        )
+    try {
+      val directLoginUrl = "https://sso.buaa.edu.cn/login"
+      val loginPageResponse = directClient.get(directLoginUrl)
+      if (loginPageResponse.status.value in 300..399) {
+        // 已有直连会话，跟随重定向激活即可
+        followRedirectsAndCheckError(loginPageResponse, directClient)
+        directClient.get(
+            "https://uc.buaa.edu.cn/api/login?target=https%3A%2F%2Fuc.buaa.edu.cn%2F%23%2Fuser%2Flogin"
+        )
+        return
+      }
+      if (loginPageResponse.status != HttpStatusCode.OK) return
+
+      val loginPageHtml = loginPageResponse.bodyAsText()
+      val execution =
+          LocalCasParser.extractExecution(loginPageHtml).takeIf { it.isNotBlank() } ?: return
+      val request = LoginRequest(username = username, password = password, execution = execution)
+      val parameters = LocalCasParser.buildCasLoginParameters(loginPageHtml, request)
+      val submitResponse =
+          directClient.post(directLoginUrl) { setBody(FormDataContent(parameters)) }
+      followRedirectsAndCheckError(submitResponse, directClient)
+      directClient.get(
+          "https://uc.buaa.edu.cn/api/login?target=https%3A%2F%2Fuc.buaa.edu.cn%2F%23%2Fuser%2Flogin"
+      )
+    } catch (_: Exception) {
+      // 直连 SSO 会话建立失败不影响主登录流程
+    } finally {
+      directClient.close()
+    }
   }
 
   private fun loginUrl(): String = localUpstreamUrl("https://sso.buaa.edu.cn/login")

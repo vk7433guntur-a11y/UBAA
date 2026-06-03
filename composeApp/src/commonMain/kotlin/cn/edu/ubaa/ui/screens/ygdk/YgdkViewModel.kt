@@ -95,6 +95,13 @@ class YgdkViewModel(
 
   internal fun hasOverviewLoaded(): Boolean = overviewLoadedOnce
 
+  /** 重置内部加载标记与 UI 状态，用于连接模式切换等场景。 */
+  fun resetLoadedState() {
+    loadedOnce = false
+    overviewLoadedOnce = false
+    _uiState.value = YgdkUiState(homeReminderEnabled = YgdkReminderStore.isEnabled(reminderUserKey))
+  }
+
   fun refreshOverviewOnly() {
     overviewLoadedOnce = true
     viewModelScope.launch {

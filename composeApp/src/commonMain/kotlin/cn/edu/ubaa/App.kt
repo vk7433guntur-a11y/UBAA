@@ -15,6 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import cn.edu.ubaa.api.ConnectionMode
 import cn.edu.ubaa.api.ConnectionRuntime
@@ -31,6 +34,7 @@ import cn.edu.ubaa.ui.screens.auth.LoginScreen
 import cn.edu.ubaa.ui.screens.splash.SplashScreen
 import cn.edu.ubaa.ui.theme.PreloadFonts
 import cn.edu.ubaa.ui.theme.UBAATheme
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -85,6 +89,30 @@ fun App() {
       selectedConnectionMode = ConnectionRuntime.resolveSelectedMode()
       modeResolved = true
       selectedConnectionMode?.let { bootstrapForMode(it) }
+    }
+
+    // 前台恢复时验证会话有效性
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner, uiState.isLoggedIn) {
+      var wasInBackground = false
+      val observer = LifecycleEventObserver { _, event ->
+        when (event) {
+          Lifecycle.Event.ON_STOP -> wasInBackground = true
+          Lifecycle.Event.ON_RESUME -> {
+            if (wasInBackground) {
+              wasInBackground = false
+              if (uiState.isLoggedIn) authViewModel.validateSession()
+            }
+          }
+          else -> {}
+        }
+      }
+      lifecycleOwner.lifecycle.addObserver(observer)
+      try {
+        awaitCancellation()
+      } finally {
+        lifecycleOwner.lifecycle.removeObserver(observer)
+      }
     }
 
     // 根据认证状态和加载进度决定何时隐藏 Splash 界面

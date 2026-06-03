@@ -276,6 +276,33 @@ class AuthViewModel(
     }
   }
 
+  /** 前台恢复时验证当前会话是否仍然有效。 如果会话过期或网络暂时不可用，根据错误类型决定保留还是清除会话。 */
+  fun validateSession() {
+    if (!_uiState.value.isLoggedIn) return
+    viewModelScope.launch {
+      authService
+          .getAuthStatus()
+          .onSuccess { status ->
+            _uiState.value =
+                _uiState.value.copy(
+                    isLoggedIn = true,
+                    userData = status.user,
+                )
+          }
+          .onFailure { error ->
+            if (error is ApiCallException && error.code == "auth_upstream_timeout") {
+              // 网络暂时不可用，保留会话状态
+              return@onFailure
+            }
+            // 会话确实过期了
+            authService.clearStoredSession()
+            resetUserInfoState()
+            _uiState.value = AuthUiState()
+            if (CredentialStore.isAutoLogin()) login() else preloadLoginState()
+          }
+    }
+  }
+
   /** 清除当前的错误提示。 */
   fun clearError() {
     _uiState.value = _uiState.value.copy(error = null)

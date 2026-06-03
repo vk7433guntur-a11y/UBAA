@@ -353,6 +353,200 @@ class LocalSigninApiBackendTest {
     assertEquals(1, loginRequests)
   }
 
+  @Test
+  fun `signin api handles string STATUS and signStatus from iclass server`() = runTest {
+    val expectedDate = currentSigninDate()
+    val loginName = "Rjc1QkJDMUMxNzVENkY0NkZCNzFDMEM5RjYwNzg4RDg="
+    val engine = MockEngine { request ->
+      when {
+        request.url.host == "iclass.buaa.edu.cn" &&
+            request.url.port == 8346 &&
+            request.url.parameters["type"] == "jumpMyCenter" ->
+            respond(
+                content = ByteReadChannel(""),
+                status = HttpStatusCode.Found,
+                headers =
+                    headersOf(
+                        HttpHeaders.Location,
+                        "https://iclass.buaa.edu.cn:8346/?loginName=$loginName&type=jumpMyCenter#/MyCenter",
+                    ),
+            )
+        request.url.host == "iclass.buaa.edu.cn" &&
+            request.url.port == 8347 &&
+            request.url.encodedPath == "/app/user/login.action" ->
+            respond(
+                content =
+                    ByteReadChannel(
+                        """{"STATUS":"0","result":{"id":"user-1","sessionId":"session-1"}}"""
+                    ),
+                status = HttpStatusCode.OK,
+                headers =
+                    headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        request.url.toString() ==
+            "https://iclass.buaa.edu.cn:8347/app/course/get_stu_course_sched.action?id=user-1&dateStr=$expectedDate" ->
+            respond(
+                content =
+                    ByteReadChannel(
+                        """{"STATUS":"0","result":[{"id":"c1","courseName":"软件工程","classBeginTime":"08:00","classEndTime":"09:40","signStatus":"1"}]}"""
+                    ),
+                status = HttpStatusCode.OK,
+                headers =
+                    headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        else -> error("Unexpected url: ${request.url}")
+      }
+    }
+    useMockUpstream(engine)
+
+    val result = SigninApi().getTodayClasses()
+
+    assertTrue(result.isSuccess, result.exceptionOrNull()?.message.orEmpty())
+    val course = result.getOrNull()?.data?.singleOrNull()
+    assertEquals("c1", course?.courseId)
+    assertEquals(1, course?.signStatus, "signStatus string \"1\" should be parsed as int 1")
+  }
+
+  @Test
+  fun `perform signin handles string STATUS and stuSignStatus`() = runTest {
+    val loginName = "Rjc1QkJDMUMxNzVENkY0NkZCNzFDMEM5RjYwNzg4RDg="
+    val engine = MockEngine { request ->
+      when {
+        request.url.host == "iclass.buaa.edu.cn" &&
+            request.url.port == 8346 &&
+            request.url.parameters["type"] == "jumpMyCenter" ->
+            respond(
+                content = ByteReadChannel(""),
+                status = HttpStatusCode.Found,
+                headers =
+                    headersOf(
+                        HttpHeaders.Location,
+                        "https://iclass.buaa.edu.cn:8346/?loginName=$loginName&type=jumpMyCenter#/MyCenter",
+                    ),
+            )
+        request.url.host == "iclass.buaa.edu.cn" &&
+            request.url.port == 8347 &&
+            request.url.encodedPath == "/app/user/login.action" ->
+            respond(
+                content =
+                    ByteReadChannel(
+                        """{"STATUS":"0","result":{"id":"user-1","sessionId":"session-1"}}"""
+                    ),
+                status = HttpStatusCode.OK,
+                headers =
+                    headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        request.url.toString() ==
+            "http://iclass.buaa.edu.cn:8081/app/common/get_timestamp.action" ->
+            respond(
+                content = ByteReadChannel("""{"timestamp":"1713600000"}"""),
+                status = HttpStatusCode.OK,
+                headers =
+                    headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        request.url.toString() ==
+            "http://iclass.buaa.edu.cn:8081/app/course/stu_scan_sign.action?courseSchedId=course-1&timestamp=1713600000" ->
+            respond(
+                content =
+                    ByteReadChannel(
+                        """{"STATUS":"0","ERRMSG":"签到成功","result":{"stuSignStatus":"1"}}"""
+                    ),
+                status = HttpStatusCode.OK,
+                headers =
+                    headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        else -> error("Unexpected url: ${request.url}")
+      }
+    }
+    useMockUpstream(engine)
+
+    val result = SigninApi().performSignin("course-1")
+
+    assertTrue(result.isSuccess)
+    assertEquals(
+        true,
+        result.getOrNull()?.success,
+        "string STATUS \"0\" + stuSignStatus \"1\" should be success",
+    )
+    assertEquals("签到成功", result.getOrNull()?.message)
+  }
+
+  @Test
+  fun `signin retries on session expired error message`() = runTest {
+    val loginName = "Rjc1QkJDMUMxNzVENkY0NkZCNzFDMEM5RjYwNzg4RDg="
+    var signinRequests = 0
+    val engine = MockEngine { request ->
+      when {
+        request.url.host == "iclass.buaa.edu.cn" &&
+            request.url.port == 8346 &&
+            request.url.parameters["type"] == "jumpMyCenter" ->
+            respond(
+                content = ByteReadChannel(""),
+                status = HttpStatusCode.Found,
+                headers =
+                    headersOf(
+                        HttpHeaders.Location,
+                        "https://iclass.buaa.edu.cn:8346/?loginName=$loginName&type=jumpMyCenter#/MyCenter",
+                    ),
+            )
+        request.url.host == "iclass.buaa.edu.cn" &&
+            request.url.port == 8347 &&
+            request.url.encodedPath == "/app/user/login.action" ->
+            respond(
+                content =
+                    ByteReadChannel(
+                        """{"STATUS":"0","result":{"id":"user-1","sessionId":"session-1"}}"""
+                    ),
+                status = HttpStatusCode.OK,
+                headers =
+                    headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        request.url.toString() ==
+            "http://iclass.buaa.edu.cn:8081/app/common/get_timestamp.action" ->
+            respond(
+                content = ByteReadChannel("""{"timestamp":"1713600000"}"""),
+                status = HttpStatusCode.OK,
+                headers =
+                    headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        request.url
+            .toString()
+            .startsWith("http://iclass.buaa.edu.cn:8081/app/course/stu_scan_sign.action") -> {
+          signinRequests++
+          if (signinRequests == 1) {
+            // First attempt: session expired
+            respond(
+                content = ByteReadChannel("""{"STATUS":"1","ERRMSG":"请重新登录","result":{}}"""),
+                status = HttpStatusCode.OK,
+                headers =
+                    headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+          } else {
+            // Retry after session refresh: success
+            respond(
+                content =
+                    ByteReadChannel(
+                        """{"STATUS":"0","ERRMSG":"签到成功","result":{"stuSignStatus":"1"}}"""
+                    ),
+                status = HttpStatusCode.OK,
+                headers =
+                    headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+          }
+        }
+        else -> error("Unexpected url: ${request.url}")
+      }
+    }
+    useMockUpstream(engine)
+
+    val result = SigninApi().performSignin("course-1")
+
+    assertTrue(result.isSuccess)
+    assertEquals(true, result.getOrNull()?.success, "should succeed after retry")
+    assertEquals("签到成功", result.getOrNull()?.message)
+    assertEquals(2, signinRequests, "should have retried once")
+  }
+
   private fun useMockUpstream(engine: MockEngine) {
     LocalUpstreamClientProvider.clientFactory = { followRedirects ->
       HttpClient(engine) {

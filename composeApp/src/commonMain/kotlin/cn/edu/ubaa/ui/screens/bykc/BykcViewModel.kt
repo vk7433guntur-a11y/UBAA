@@ -79,6 +79,19 @@ class BykcViewModel(
     loadProfile()
   }
 
+  /** 重置内部加载标记与 UI 状态，用于连接模式切换等场景。 */
+  fun resetLoadedState() {
+    profileLoadedOnce = false
+    chosenLoadedOnce = false
+    statisticsLoadedOnce = false
+    coursesLoadedOnce = false
+    loadedCoursesIncludeExpired = null
+    _coursesState.value = BykcCoursesUiState()
+    _courseDetailState.value = BykcCourseDetailUiState()
+    _chosenCoursesState.value = BykcChosenCoursesUiState()
+    _statisticsState.value = BykcStatisticsUiState()
+  }
+
   fun ensureCoursesLoaded(includeExpired: Boolean = false, forceRefresh: Boolean = false) {
     if (!forceRefresh && coursesLoadedOnce && loadedCoursesIncludeExpired == includeExpired) {
       return
