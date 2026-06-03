@@ -325,6 +325,9 @@ internal sealed interface LocalConnectionSessionValidationState {
   data class Valid(val session: LocalAuthSession) : LocalConnectionSessionValidationState
 
   data object Invalid : LocalConnectionSessionValidationState
+
+  /** 服务端暂时不可用（5xx），不应清除会话。 */
+  data object TransientError : LocalConnectionSessionValidationState
 }
 
 internal suspend fun validateLocalConnectionSession(): LocalConnectionSessionValidationState {
@@ -334,7 +337,11 @@ internal suspend fun validateLocalConnectionSession(): LocalConnectionSessionVal
         header("X-Requested-With", "XMLHttpRequest")
       }
   if (response.status != HttpStatusCode.OK) {
-    return LocalConnectionSessionValidationState.Invalid
+    return if (response.status.value in 500..599) {
+      LocalConnectionSessionValidationState.TransientError
+    } else {
+      LocalConnectionSessionValidationState.Invalid
+    }
   }
 
   val body = response.bodyAsText()
@@ -411,7 +418,8 @@ internal class LocalAuthServiceBackend : AuthServiceBackend {
                 )
             )
           }
-          LocalConnectionSessionValidationState.Invalid ->
+          LocalConnectionSessionValidationState.Invalid,
+          LocalConnectionSessionValidationState.TransientError ->
               Result.success(LoginPreloadResponse(captchaRequired = false))
         }
       }
@@ -525,6 +533,14 @@ internal class LocalAuthServiceBackend : AuthServiceBackend {
                     code = "unauthenticated",
                 )
             )
+        LocalConnectionSessionValidationState.TransientError ->
+            Result.failure(
+                ApiCallException(
+                    message = "认证服务响应超时，请稍后重试",
+                    status = HttpStatusCode.ServiceUnavailable,
+                    code = "auth_upstream_timeout",
+                )
+            )
       }
     } catch (e: Exception) {
       Result.failure(e.toUserFacingApiException("登录失败，请稍后重试"))
@@ -569,9 +585,28 @@ internal class LocalAuthServiceBackend : AuthServiceBackend {
               )
           )
         }
+        LocalConnectionSessionValidationState.TransientError ->
+            Result.failure(
+                ApiCallException(
+                    message = "认证服务响应超时，请稍后重试",
+                    status = HttpStatusCode.ServiceUnavailable,
+                    code = "auth_upstream_timeout",
+                )
+            )
       }
     } catch (e: Exception) {
-      Result.failure(e.toUserFacingApiException("认证服务响应超时，请稍后重试"))
+      val wrapped = e.toUserFacingApiException("认证服务响应超时，请稍后重试")
+      if (wrapped is ApiCallException && wrapped.code == null) {
+        Result.failure(
+            ApiCallException(
+                message = wrapped.message ?: "认证服务响应超时，请稍后重试",
+                status = wrapped.status,
+                code = "auth_upstream_timeout",
+            )
+        )
+      } else {
+        Result.failure(wrapped)
+      }
     }
   }
 
