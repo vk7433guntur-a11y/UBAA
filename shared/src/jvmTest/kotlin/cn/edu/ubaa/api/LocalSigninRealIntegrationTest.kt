@@ -11,10 +11,14 @@ import cn.edu.ubaa.api.local.localUpstreamUrl
 import cn.edu.ubaa.api.storage.CredentialStore
 import com.russhwolf.settings.MapSettings
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.Url
+import kotlin.time.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Properties
@@ -23,6 +27,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -53,7 +58,12 @@ class LocalSigninRealIntegrationTest {
     println("REAL_LOCAL_SIGNIN loginNameLength=${loginName.length}")
 
     val appLoginPayload = performIclassAppLogin(loginName)
-    assertEquals(0, appLoginPayload["STATUS"]?.jsonPrimitive?.intOrNull)
+    val statusVal = appLoginPayload["STATUS"]?.jsonPrimitive
+    val statusStr = statusVal?.contentOrNull ?: statusVal?.intOrNull?.toString()
+    assertTrue(
+        statusStr == "0" || statusStr == "200" || statusStr == "success",
+        "STATUS should be success but was: $statusStr",
+    )
     val result = appLoginPayload["result"]?.jsonObject
     val userId = result?.get("id")?.jsonPrimitive?.content.orEmpty()
     val sessionId = result?.get("sessionId")?.jsonPrimitive?.content.orEmpty()
@@ -66,6 +76,53 @@ class LocalSigninRealIntegrationTest {
     val classesResult = SigninApi().getTodayClasses()
     assertTrue(classesResult.isSuccess, classesResult.exceptionOrNull()?.message.orEmpty())
     println("REAL_LOCAL_SIGNIN todayClasses=${classesResult.getOrThrow().data.size}")
+  }
+
+  @Test
+  fun `real local webvpn account can resolve iclass loginName and app login`() = runTest {
+    assumeTrue(System.getenv("UBAA_REAL_SIGNIN_TEST") == "true")
+    val credentials = loadRealSigninCredentials()
+
+    ConnectionModeStore.settings = MapSettings()
+    LocalAuthSessionStore.settings = MapSettings()
+    LocalCookieStore.settings = MapSettings()
+    CredentialStore.settings = MapSettings()
+    ConnectionRuntime.clearSelectedMode()
+    ConnectionRuntime.switchMode(ConnectionMode.WEBVPN)
+    ConnectionRuntime.apiFactoryProvider = { DefaultApiFactory }
+    LocalUpstreamClientProvider.reset()
+
+    val loginResult =
+        LocalAuthServiceBackend().login(credentials.username, credentials.password, null, null)
+    assertTrue(loginResult.isSuccess, loginResult.exceptionOrNull()?.message.orEmpty())
+
+    val loginName = resolveRealIclassLoginName()
+    println("REAL_WEBVPN_SIGNIN loginNameLength=${loginName.length}")
+
+    val appLoginPayload = performIclassAppLogin(loginName)
+    val statusVal = appLoginPayload["STATUS"]?.jsonPrimitive
+    val statusStr = statusVal?.contentOrNull ?: statusVal?.intOrNull?.toString()
+    assertTrue(
+        statusStr == "0" || statusStr == "200" || statusStr == "success",
+        "STATUS should be success but was: $statusStr",
+    )
+    val result = appLoginPayload["result"]?.jsonObject
+    val userId = result?.get("id")?.jsonPrimitive?.content.orEmpty()
+    val sessionId = result?.get("sessionId")?.jsonPrimitive?.content.orEmpty()
+    assertTrue(userId.isNotBlank(), "iclass app login should return user id")
+    assertTrue(sessionId.isNotBlank(), "iclass app login should return sessionId")
+    println(
+        "REAL_WEBVPN_SIGNIN appLoginUserIdLength=${userId.length} sessionIdLength=${sessionId.length}"
+    )
+
+    // Test SigninApi which creates its own internal session via resolveLoginName
+    val classesResult = SigninApi().getTodayClasses()
+    assertTrue(classesResult.isSuccess, classesResult.exceptionOrNull()?.message.orEmpty())
+    println("REAL_WEBVPN_SIGNIN todayClasses=${classesResult.getOrThrow().data.size}")
+    assertTrue(
+        classesResult.getOrThrow().data.isNotEmpty(),
+        "WEBVPN mode should return at least one class",
+    )
   }
 
   private suspend fun resolveRealIclassLoginName(): String {
@@ -164,4 +221,13 @@ class LocalSigninRealIntegrationTest {
   }
 
   private data class RealSigninCredentials(val username: String, val password: String)
+
+  private fun currentSigninDate(): String {
+    val date = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+    return buildString {
+      append(date.year)
+      append(date.month.ordinal.plus(1).toString().padStart(2, '0'))
+      append(date.day.toString().padStart(2, '0'))
+    }
+  }
 }

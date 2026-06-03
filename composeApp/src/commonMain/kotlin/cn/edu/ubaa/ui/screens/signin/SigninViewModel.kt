@@ -75,6 +75,12 @@ class SigninViewModel(
     }
   }
 
+  /** 重置内部加载标记与 UI 状态，用于连接模式切换等场景。 */
+  fun resetLoadedState() {
+    loadedOnce = false
+    _uiState.value = SigninUiState()
+  }
+
   /** 清除当前的签到结果提示。 */
   fun clearSigninResult() {
     _uiState.value = _uiState.value.copy(signinResult = null)

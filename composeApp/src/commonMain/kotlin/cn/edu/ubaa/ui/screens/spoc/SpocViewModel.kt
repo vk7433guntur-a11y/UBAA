@@ -57,6 +57,12 @@ class SpocViewModel(
 
   internal fun hasAssignmentsLoaded(): Boolean = assignmentsLoadedOnce
 
+  /** 重置内部加载标记与 UI 状态，用于连接模式切换等场景。 */
+  fun resetLoadedState() {
+    assignmentsLoadedOnce = false
+    _uiState.value = SpocUiState()
+  }
+
   fun loadAssignments(refresh: Boolean = false) {
     assignmentsLoadedOnce = true
     viewModelScope.launch {

@@ -26,6 +26,12 @@ class ExamViewModel(
     loadTerms(forceRefresh)
   }
 
+  /** 重置内部加载标记与 UI 状态，用于连接模式切换等场景。 */
+  fun resetLoadedState() {
+    loadedOnce = false
+    _uiState.value = ExamUiState()
+  }
+
   fun loadTerms(forceRefresh: Boolean = false) {
     loadedOnce = true
     viewModelScope.launch {

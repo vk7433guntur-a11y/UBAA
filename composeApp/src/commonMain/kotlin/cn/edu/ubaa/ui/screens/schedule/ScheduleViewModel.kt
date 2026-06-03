@@ -47,6 +47,15 @@ class ScheduleViewModel(
     loadTerms(forceRefresh)
   }
 
+  /** 重置内部加载标记与 UI 状态，用于连接模式切换等场景。 */
+  fun resetLoadedState() {
+    todayLoadedOnce = false
+    scheduleLoadedOnce = false
+    currentWeekLoadedOnce = false
+    _uiState.value = ScheduleUiState()
+    _todayScheduleState.value = TodayScheduleState()
+  }
+
   /** 加载今日的课程安排摘要。 */
   fun loadTodaySchedule() {
     todayLoadedOnce = true

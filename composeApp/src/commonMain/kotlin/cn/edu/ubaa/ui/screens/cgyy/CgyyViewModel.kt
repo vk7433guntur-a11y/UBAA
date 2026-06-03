@@ -137,6 +137,14 @@ class CgyyViewModel(
 
   internal fun hasOrdersLoaded(): Boolean = ordersLoadedOnce
 
+  /** 重置内部加载标记与 UI 状态，用于连接模式切换等场景。 */
+  fun resetLoadedState() {
+    initialLoadedOnce = false
+    ordersLoadedOnce = false
+    lockCodeLoadedOnce = false
+    _uiState.value = createInitialState()
+  }
+
   fun ensureLockCodeLoaded(forceRefresh: Boolean = false) {
     if (!forceRefresh && lockCodeLoadedOnce) return
     loadLockCode()

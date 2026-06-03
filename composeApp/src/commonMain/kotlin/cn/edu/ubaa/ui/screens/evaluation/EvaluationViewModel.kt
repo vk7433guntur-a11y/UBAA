@@ -26,6 +26,12 @@ class EvaluationViewModel(
     loadPendingCourses()
   }
 
+  /** 重置内部加载标记与 UI 状态，用于连接模式切换等场景。 */
+  fun resetLoadedState() {
+    loadedOnce = false
+    _uiState.value = EvaluationUiState()
+  }
+
   /** 加载当前用户的评教课程列表（包括已评教和未评教）。 未评教课程默认全选，已评教课程不可选。 */
   fun loadPendingCourses() {
     loadedOnce = true

@@ -537,6 +537,54 @@ fun MainAppScreen(
     }
   }
 
+  // 连接模式切换后，重置所有 ViewModel 的加载标记与缓存数据，并强制刷新当前页面
+  LaunchedEffect(connectionMode) {
+    // 常驻 ViewModel
+    scheduleViewModel.resetLoadedState()
+    signinViewModel.resetLoadedState()
+    spocViewModel.resetLoadedState()
+    judgeViewModel.resetLoadedState()
+    bykcViewModel.resetLoadedState()
+    // 按需 ViewModel（当前可能为 null，仅在存活时重置）
+    cgyyViewModel?.resetLoadedState()
+    ygdkViewModel?.resetLoadedState()
+    examViewModel?.resetLoadedState()
+    gradeViewModel?.resetLoadedState()
+    evaluationViewModel?.resetLoadedState()
+    libBookViewModel?.resetLoadedState()
+    // 刷新当前页面数据
+    when (currentScreen) {
+      AppScreen.HOME -> startHomeBootstrap(forceRefresh = true)
+      AppScreen.SCHEDULE -> scheduleViewModel.ensureScheduleLoaded(forceRefresh = true)
+      AppScreen.EXAM -> examViewModel?.ensureLoaded(forceRefresh = true)
+      AppScreen.GRADE -> gradeViewModel?.ensureLoaded(forceRefresh = true)
+      AppScreen.BYKC_COURSES -> {
+        bykcViewModel.ensureProfileLoaded(forceRefresh = true)
+        bykcViewModel.ensureCoursesLoaded(
+            includeExpired = bykcCourseFilters.requiresAllCourses(), forceRefresh = true)
+      }
+      AppScreen.BYKC_CHOSEN -> bykcViewModel.ensureChosenCoursesLoaded(forceRefresh = true)
+      AppScreen.BYKC_STATISTICS -> bykcViewModel.ensureStatisticsLoaded(forceRefresh = true)
+      AppScreen.SIGNIN -> signinViewModel.ensureTodayLoaded(forceRefresh = true)
+      AppScreen.CGYY_HOME,
+      AppScreen.CGYY_RESERVE_PICKER,
+      AppScreen.CGYY_RESERVE_FORM -> cgyyViewModel?.ensureInitialDataLoaded(forceRefresh = true)
+      AppScreen.CGYY_ORDERS -> {
+        cgyyViewModel?.ensureInitialDataLoaded(forceRefresh = true)
+        cgyyViewModel?.ensureOrdersLoaded(forceRefresh = true)
+      }
+      AppScreen.EVALUATION -> evaluationViewModel?.ensureLoaded(forceRefresh = true)
+      AppScreen.SPOC_ASSIGNMENTS -> spocViewModel.ensureAssignmentsLoaded(forceRefresh = true)
+      AppScreen.JUDGE_ASSIGNMENTS -> judgeViewModel.ensureAssignmentsLoaded(forceRefresh = true)
+      AppScreen.LIBBOOK_HOME,
+      AppScreen.LIBBOOK_RESERVE -> libBookViewModel?.ensureInitialLoaded(forceRefresh = true)
+      AppScreen.LIBBOOK_BOOKINGS -> libBookViewModel?.ensureBookingsLoaded(forceRefresh = true)
+      AppScreen.YGDK_HOME,
+      AppScreen.YGDK_FORM -> ygdkViewModel?.ensureLoaded(forceRefresh = true)
+      else -> Unit
+    }
+  }
+
   // Don't clear a manual refresh until we've observed real loading at least once.
   LaunchedEffect(
       homeManualRefreshPending,
