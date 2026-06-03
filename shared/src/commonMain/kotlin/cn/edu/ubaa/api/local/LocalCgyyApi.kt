@@ -669,7 +669,7 @@ private class LocalCgyyClient(
           header(HttpHeaders.Accept, "application/json, text/plain, */*")
           header(
               HttpHeaders.Referrer,
-              localUpstreamUrl("https://cgyy.buaa.edu.cn/venue-zhjs/mobileReservation"),
+              localCgyyUpstreamUrl("https://cgyy.buaa.edu.cn/venue-zhjs/mobileReservation"),
           )
           header("app-key", signer.appKey)
           header("timestamp", timestamp.toString())
@@ -745,39 +745,25 @@ private class LocalCgyyClient(
       if (!forceRefresh && !accessToken.isNullOrBlank()) return@withLock
       accessToken = null
 
-      val manageLoginResponse =
-          LocalUpstreamClientProvider.shared().get(localUpstreamUrl("${BASE_URL}sso/manageLogin"))
-      val manageLoginBody = runCatching { manageLoginResponse.bodyAsText() }.getOrDefault("")
-      if (isLoginRedirect(manageLoginResponse, manageLoginBody)) {
-        throw LocalCgyyApiException("未获取到研讨室登录态", "unauthenticated", HttpStatusCode.Unauthorized)
+      // CGYY 和 SSO 都可以直连，不需要走 WebVPN。使用 DIRECT cookie 的客户端处理 SSO 重定向链。
+      val cgyyDirectClient =
+          LocalUpstreamClientProvider.newClient(
+              cookieStorage = LocalCookieStore.storage(ConnectionMode.DIRECT),
+              followRedirects = true,
+          )
+      try {
+        cgyyDirectClient.get(localCgyyUpstreamUrl("${BASE_URL}sso/manageLogin"))
+      } finally {
+        cgyyDirectClient.close()
       }
 
-      val cookieFromResponse =
-          manageLoginResponse.headers
-              .getAll(HttpHeaders.SetCookie)
-              .orEmpty()
-              .firstNotNullOfOrNull { header ->
-                header
-                    .substringBefore(';')
-                    .split('=', limit = 2)
-                    .takeIf { it.size == 2 }
-                    ?.takeIf { it[0].trim() == SSO_COOKIE_NAME }
-                    ?.get(1)
-                    ?.trim()
-                    ?.takeIf { it.isNotBlank() }
-              }
-      val storage =
-          LocalCookieStore.storage(
-              ConnectionRuntime.currentMode()?.takeIf { it != ConnectionMode.SERVER_RELAY }
-                  ?: ConnectionMode.DIRECT
-          )
+      val storage = LocalCookieStore.storage(ConnectionMode.DIRECT)
       val ssoToken =
-          cookieFromResponse
-              ?: storage
-                  .get(Url(localUpstreamUrl(BASE_URL)))
-                  .firstOrNull { it.name == SSO_COOKIE_NAME }
-                  ?.value
-                  ?.takeIf { it.isNotBlank() }
+          storage
+              .get(Url(localCgyyUpstreamUrl(BASE_URL)))
+              .firstOrNull { it.name == SSO_COOKIE_NAME }
+              ?.value
+              ?.takeIf { it.isNotBlank() }
               ?: throw LocalCgyyApiException(
                   "未获取到研讨室 SSO Token",
                   "unauthenticated",
@@ -817,7 +803,7 @@ private class LocalCgyyClient(
   }
 
   private fun buildUrl(path: String): String =
-      localUpstreamUrl("$BASE_URL${path.removePrefix("/")}")
+      localCgyyUpstreamUrl("$BASE_URL${path.removePrefix("/")}")
 
   private fun normalizePath(path: String): String = if (path.startsWith("/")) path else "/$path"
 

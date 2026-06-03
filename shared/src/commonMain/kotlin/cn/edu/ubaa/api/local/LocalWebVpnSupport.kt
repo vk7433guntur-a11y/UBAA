@@ -101,4 +101,7 @@ internal fun localUpstreamUrl(url: String): String =
       else -> url
     }
 
+/** CGYY (cgyy.buaa.edu.cn) is publicly accessible without campus network, always use direct URL. */
+internal fun localCgyyUpstreamUrl(url: String): String = url
+
 internal fun localIsSsoUrl(url: String?): Boolean = LocalWebVpnSupport.isSsoUrl(url)
