@@ -18,7 +18,7 @@ UBAA 的状态分为客户端本地状态、服务端会话状态和短期业务
 
 ## 业务缓存
 
-服务端会缓存 signin、bykc、cgyy、spoc、judge、ygdk 等上游客户端上下文，并通过应用停止回调和定时清理释放。希冀本地实现还维护课程和详情缓存，避免重复解析上游页面。
+服务端会缓存 signin、bykc、cgyy、spoc、judge、libbook、ygdk 等上游客户端上下文，并通过应用停止回调和定时清理释放。希冀本地实现还维护课程和详情缓存，避免重复解析上游页面。
 
 ## 来源文件
 
@@ -32,4 +32,5 @@ UBAA 的状态分为客户端本地状态、服务端会话状态和短期业务
 - `server/src/main/kotlin/cn/edu/ubaa/auth/session/SessionManager.kt`
 - `server/src/main/kotlin/cn/edu/ubaa/auth/session/RedisSessionStore.kt`
 - `server/src/main/kotlin/cn/edu/ubaa/auth/session/RefreshTokenStore.kt`
+- `server/src/main/kotlin/cn/edu/ubaa/libbook/LibBookService.kt`
 - `server/src/main/kotlin/cn/edu/ubaa/metrics/LoginMetrics.kt`

@@ -24,7 +24,7 @@ yay -S ubaa
 ## 核心能力
 
 - 多端统一：Android、iOS、Desktop、Web 共用核心能力与大部分业务代码。
-- 校园服务聚合：统一认证、课表、考试、空闲教室、博雅、签到、评教等能力集中接入。
+- 校园服务聚合：统一认证、课表、考试、成绩、空闲教室、博雅、SPOC、希冀、图书馆座位、签到、研讨室、阳光打卡、评教等能力集中接入。
 - 全栈同仓：`shared` 统一前后端契约，`server` 负责网关与会话管理，`composeApp` 负责跨平台 UI。
 - 现代体验：基于 Material Design 3，支持系统主题适配与持续更新。
 
@@ -46,5 +46,8 @@ UBAA/
 ├── shared/       # 前后端共享契约与通用逻辑
 ├── server/       # Ktor 后端网关
 ├── androidApp/   # Android 壳工程
-└── iosApp/       # iOS 壳工程
+├── iosApp/       # iOS 壳工程
+├── buildSrc/     # 自定义 Gradle 任务
+├── docs/         # VitePress 文档
+└── .github/      # CI、发布和文档部署 workflow
 ```

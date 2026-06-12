@@ -21,7 +21,7 @@ UBAA 通过应用内弹窗通知用户查看公告，公告详情统一发布在
   "title": "官方用户群",
   "content": "加入官方 QQ/微信群，获取最新消息和技术支持！",
   "confirmText": "查看详情",
-  "linkUrl": "https://docs.buaa.team/announcements/2026-05-09-001"
+  "linkUrl": "https://www.buaa.team/announcements/2026-05-09-001"
 }
 ```
 

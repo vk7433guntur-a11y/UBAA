@@ -1,509 +1,135 @@
-# Source Inventory
+# 源文件清单
 
-Generated during the docs implementation pass on 2026-05-07. The scan excluded `.git`, `build`, `node_modules`, `tmp`, `local.properties`, and VitePress output/cache.
+生成时间：2026-06-08，全仓库文档审查期间。
 
-## Summary
+本清单基于当前仓库状态生成，包含 Git 已跟踪文件和本次审查新增的未跟踪文档产物。扫描排除了 `build/`、`.gradle/`、`node_modules/`、`tmp/`、`local.properties`、`docs/.vitepress/dist/` 和 `docs/.vitepress/cache/`。
 
-- Total scanned files: 467
-- shared: 141
-- composeApp: 122
-- server: 120
-- docs: 28
-- androidApp: 23
-- iosApp: 13
-- .github: 5
-- gradle: 3
-- README.md: 1
-- package.json: 1
-- package-lock.json: 1
-- LICENSE: 1
-- gradle.properties: 1
-- gradlew: 1
-- settings.gradle.kts: 1
-- build.gradle.kts: 1
-- .gitignore: 1
-- .gitattributes: 1
-- gradlew.bat: 1
-- .env.sample: 1
+## 扫描命令
 
-## Status Legend
+```powershell
+$tracked = git -c safe.directory=D:/Code/Kotlin/UBAA ls-files
+$untracked = git -c safe.directory=D:/Code/Kotlin/UBAA ls-files --others --exclude-standard
+$files = @($tracked + $untracked) | Where-Object {
+  $_ -notmatch '(^|/)(build|\.gradle|node_modules|tmp)(/|$)' -and
+  $_ -notmatch '^docs/\.vitepress/(dist|cache)/' -and
+  $_ -ne 'local.properties'
+}
+```
 
-- 已覆盖: the file is covered by one or more public docs pages listed in the target column.
-- 无需文档化: generated binary, wrapper artifact, icon, or repository metadata that does not need a public docs page.
-- 生成或私密排除: excluded from this scan by design; see the excluded paths sentence above.
+## 汇总
 
-## Files
+- 扫描文件总数：545
+- `shared`：161
+- `composeApp`：158
+- `server`：127
+- `docs`：38
+- `androidApp`：23
+- `iosApp`：14
+- `.github`：4
+- `buildSrc`：3
+- `gradle`：3
+- 顶层单文件：`README.md`、`package.json`、`package-lock.json`、`LICENSE`、`kotlin-js-store`、`gradle.properties`、`gradlew`、`settings.gradle.kts`、`build.gradle.kts`、`.vscode`、`.gitignore`、`.gitattributes`、`gradlew.bat`、`.env.sample`
 
-| Path | Status | Target doc |
+## 顶层模块
+
+| 路径 | 数量 | 当前文档覆盖 | 备注 |
+| --- | ---: | --- | --- |
+| `shared/` | 161 | `docs/tech/shared-api.md`、功能文档、`docs/tech/connection-modes.md`、`docs/tech/state-storage.md` | DTO、API 契约、relay/local backend、存储、平台能力。 |
+| `composeApp/` | 158 | `docs/tech/modules.md`、功能文档 | Compose Multiplatform UI、ViewModel、导航、Web 资源、桌面打包。 |
+| `server/` | 127 | `docs/tech/server-routes.md`、`docs/tech/architecture.md`、功能文档 | Ktor 路由、会话和缓存服务、上游客户端、指标、公告、版本检查。 |
+| `docs/` | 38 | `docs/index.md` 与 VitePress sidebar | 公共文档、功能页、技术页、公告、审查文件、静态二维码图片。 |
+| `androidApp/` | 23 | `README.md`、`docs/tech/modules.md` | Android 壳工程、manifest、资源、签名和版本配置。 |
+| `iosApp/` | 14 | `README.md`、`docs/tech/modules.md` | SwiftUI 壳工程、Xcode 项目、图标和 plist。 |
+| `buildSrc/` | 3 | `docs/tech/modules.md`、`docs/tech/testing.md`、`docs/tech/release-deployment.md` | 自定义 bhpan Gradle 任务及测试。 |
+| `gradle/` | 3 | `docs/tech/configuration.md` | 版本目录和 Gradle wrapper。 |
+
+## Source Set 计数
+
+| 分组 | 数量 |
+| --- | ---: |
+| `shared/src/commonMain` | 72 |
+| `shared/src/commonTest` | 39 |
+| `shared/src/androidMain` | 9 |
+| `shared/src/iosMain` | 9 |
+| `shared/src/jsMain` | 9 |
+| `shared/src/jvmMain` | 9 |
+| `shared/src/jvmTest` | 4 |
+| `shared/src/wasmJsMain` | 9 |
+| `composeApp/src/commonMain` | 99 |
+| `composeApp/src/commonTest` | 22 |
+| `composeApp/src/androidMain` | 3 |
+| `composeApp/src/iosMain` | 4 |
+| `composeApp/src/jsMain` | 3 |
+| `composeApp/src/jvmMain` | 5 |
+| `composeApp/src/wasmJsMain` | 3 |
+| `composeApp/src/webMain` | 13 |
+| `server/src/main` | 79 |
+| `server/src/test` | 47 |
+
+## GitHub Workflows
+
+当前 workflow 文件：
+
+- `.github/workflows/docs.yml`
+- `.github/workflows/format.yml`
+- `.github/workflows/release.yml`
+- `.github/workflows/test.yml`
+
+已清理的过期记录：
+
+- `.github/workflows/upload.yml` 当前不存在，不能作为现行 workflow 记录。
+
+## 文档文件
+
+| 路径 | 状态 |
+| --- | --- |
+| `docs/index.md` | 文档站首页。 |
+| `docs/.vitepress/config.mts` | VitePress 导航和侧边栏。 |
+| `docs/features/index.md` | 功能总览。 |
+| `docs/features/auth-and-connection.md` | 登录与连接模式。 |
+| `docs/features/schedule-and-exam.md` | 课表与考试。 |
+| `docs/features/grades.md` | 成绩查询。 |
+| `docs/features/bykc.md` | 博雅课程。 |
+| `docs/features/classroom.md` | 空教室查询。 |
+| `docs/features/spoc.md` | SPOC 作业。 |
+| `docs/features/judge.md` | 希冀作业。 |
+| `docs/features/libbook.md` | 图书馆座位。 |
+| `docs/features/signin.md` | 课程签到。 |
+| `docs/features/cgyy.md` | 研讨室预约。 |
+| `docs/features/ygdk.md` | 阳光打卡。 |
+| `docs/features/evaluation.md` | 自动评教。 |
+| `docs/tech/architecture.md` | 架构总览。 |
+| `docs/tech/modules.md` | 模块职责。 |
+| `docs/tech/shared-api.md` | 共享 API 与契约。 |
+| `docs/tech/connection-modes.md` | 连接模式规则。 |
+| `docs/tech/server-routes.md` | Ktor 路由。 |
+| `docs/tech/state-storage.md` | 客户端和服务端状态、缓存。 |
+| `docs/tech/configuration.md` | 本地、环境变量和 CI 配置。 |
+| `docs/tech/testing.md` | 验证命令和 CI 质量门禁。 |
+| `docs/tech/release-deployment.md` | Release、Web 和 docs 部署。 |
+| `docs/tech/troubleshooting.md` | 排障指南。 |
+| `docs/tech/privacy-policy.md` | 隐私边界。 |
+| `docs/tech/disclaimer.md` | 第三方免责声明。 |
+| `docs/announcements/index.md` | 公告维护说明。 |
+| `docs/announcements/history.md` | 公告历史。 |
+| `docs/changelog/index.md` | 更新日志索引。 |
+| `docs/_audit/2026-06-08-full-repo-docs-review.md` | 本次审查报告。 |
+| `docs/_audit/source-inventory.md` | 本清单。 |
+
+## 高风险源码锚点
+
+| 区域 | 源码锚点 | 覆盖文档 |
 | --- | --- | --- |
-| .env.sample | 已覆盖 | docs/tech/configuration.md |
-| .gitattributes | 无需文档化 | N/A |
-| .github/workflows/docs.yml | 已覆盖 | docs/tech/release-deployment.md |
-| .github/workflows/format.yml | 已覆盖 | docs/tech/testing.md |
-| .github/workflows/release.yml | 已覆盖 | docs/tech/release-deployment.md |
-| .github/workflows/test.yml | 已覆盖 | docs/tech/testing.md |
-| .github/workflows/upload.yml | 已覆盖 | docs/tech/release-deployment.md |
-| .gitignore | 已覆盖 | docs/tech/configuration.md |
-| androidApp/build.gradle.kts | 已覆盖 | docs/tech/modules.md |
-| androidApp/src/main/AndroidManifest.xml | 已覆盖 | docs/tech/modules.md |
-| androidApp/src/main/java/cn/edu/ubaa/MainActivity.kt | 已覆盖 | docs/tech/modules.md |
-| androidApp/src/main/res/drawable-v24/ic_launcher_foreground.xml | 已覆盖 | docs/tech/modules.md |
-| androidApp/src/main/res/drawable/ic_launcher_background.xml | 已覆盖 | docs/tech/modules.md |
-| androidApp/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml | 已覆盖 | docs/tech/modules.md |
-| androidApp/src/main/res/mipmap-anydpi-v26/ic_launcher.xml | 已覆盖 | docs/tech/modules.md |
-| androidApp/src/main/res/mipmap-hdpi/ic_launcher_foreground.png | 无需文档化 | N/A |
-| androidApp/src/main/res/mipmap-hdpi/ic_launcher_round.png | 无需文档化 | N/A |
-| androidApp/src/main/res/mipmap-hdpi/ic_launcher.png | 无需文档化 | N/A |
-| androidApp/src/main/res/mipmap-mdpi/ic_launcher_foreground.png | 无需文档化 | N/A |
-| androidApp/src/main/res/mipmap-mdpi/ic_launcher_round.png | 无需文档化 | N/A |
-| androidApp/src/main/res/mipmap-mdpi/ic_launcher.png | 无需文档化 | N/A |
-| androidApp/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png | 无需文档化 | N/A |
-| androidApp/src/main/res/mipmap-xhdpi/ic_launcher_round.png | 无需文档化 | N/A |
-| androidApp/src/main/res/mipmap-xhdpi/ic_launcher.png | 无需文档化 | N/A |
-| androidApp/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png | 无需文档化 | N/A |
-| androidApp/src/main/res/mipmap-xxhdpi/ic_launcher_round.png | 无需文档化 | N/A |
-| androidApp/src/main/res/mipmap-xxhdpi/ic_launcher.png | 无需文档化 | N/A |
-| androidApp/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png | 无需文档化 | N/A |
-| androidApp/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png | 无需文档化 | N/A |
-| androidApp/src/main/res/mipmap-xxxhdpi/ic_launcher.png | 无需文档化 | N/A |
-| androidApp/src/main/res/values/strings.xml | 已覆盖 | docs/tech/modules.md |
-| build.gradle.kts | 已覆盖 | docs/index.md |
-| composeApp/build.gradle.kts | 已覆盖 | docs/tech/configuration.md |
-| composeApp/compose-desktop.pro | 已覆盖 | docs/tech/modules.md |
-| composeApp/icons/app.icns | 已覆盖 | docs/tech/modules.md |
-| composeApp/icons/app.ico | 无需文档化 | N/A |
-| composeApp/icons/app.png | 无需文档化 | N/A |
-| composeApp/src/androidMain/kotlin/cn/edu/ubaa/ui/common/util/BackHandlerCompat.android.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/androidMain/kotlin/cn/edu/ubaa/ui/common/util/PlatformImagePicker.android.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/androidMain/kotlin/cn/edu/ubaa/ui/theme/Typography.android.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonMain/composeResources/drawable/app_icon.png | 无需文档化 | N/A |
-| composeApp/src/commonMain/composeResources/drawable/compose-multiplatform.xml | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonMain/composeResources/font/yahei.ttf | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/App.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/TestClock.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/common/components/AppTopBar.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/common/components/BottomNavigation.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/common/components/ReleaseNotesText.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/common/components/Sidebar.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/common/util/BackHandlerCompat.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/common/util/BackHandlerCompat.notAndroid.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/common/util/PlatformImagePicker.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/navigation/HomeBootstrapCoordinator.kt | 已覆盖 | docs/features/index.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/navigation/MainAppScreen.kt | 已覆盖 | docs/features/index.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/navigation/NavigationController.kt | 已覆盖 | docs/features/index.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/auth/AuthViewModel.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/auth/ConnectionModeSelectionScreen.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/auth/LoginScreen.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/auth/UserInfoScreen.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/bykc/BykcChosenCoursesScreen.kt | 已覆盖 | docs/features/bykc.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/bykc/BykcCourseDetailScreen.kt | 已覆盖 | docs/features/bykc.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/bykc/BykcCourseFilters.kt | 已覆盖 | docs/features/bykc.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/bykc/BykcCoursesScreen.kt | 已覆盖 | docs/features/bykc.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/bykc/BykcHomeScreen.kt | 已覆盖 | docs/features/bykc.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/bykc/BykcStatisticsScreen.kt | 已覆盖 | docs/features/bykc.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/bykc/BykcTimeFormatters.kt | 已覆盖 | docs/features/bykc.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/bykc/BykcViewModel.kt | 已覆盖 | docs/features/bykc.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/cgyy/CgyyHomeScreen.kt | 已覆盖 | docs/features/cgyy.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/cgyy/CgyyLockCodeScreen.kt | 已覆盖 | docs/features/cgyy.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/cgyy/CgyyOrdersScreen.kt | 已覆盖 | docs/features/cgyy.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/cgyy/CgyyReserveFormScreen.kt | 已覆盖 | docs/features/cgyy.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/cgyy/CgyyReservePickerScreen.kt | 已覆盖 | docs/features/cgyy.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/cgyy/CgyyUiCommon.kt | 已覆盖 | docs/features/cgyy.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/cgyy/CgyyViewModel.kt | 已覆盖 | docs/features/cgyy.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/classroom/ClassroomQueryScreen.kt | 已覆盖 | docs/features/classroom.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/classroom/ClassroomViewModel.kt | 已覆盖 | docs/features/classroom.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/evaluation/EvaluationScreen.kt | 已覆盖 | docs/features/evaluation.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/evaluation/EvaluationViewModel.kt | 已覆盖 | docs/features/evaluation.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/exam/ExamScreen.kt | 已覆盖 | docs/features/schedule-and-exam.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/exam/ExamViewModel.kt | 已覆盖 | docs/features/schedule-and-exam.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/grade/GradeScreen.kt | 已覆盖 | docs/features/grades.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/grade/GradeViewModel.kt | 已覆盖 | docs/features/grades.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/judge/JudgeAssignmentDetailScreen.kt | 已覆盖 | docs/features/judge.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/judge/JudgeAssignmentsScreen.kt | 已覆盖 | docs/features/judge.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/judge/JudgeViewModel.kt | 已覆盖 | docs/features/judge.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/menu/AdvancedFeaturesScreen.kt | 已覆盖 | docs/features/index.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/menu/HomeScreen.kt | 已覆盖 | docs/features/index.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/menu/HomeTodo.kt | 已覆盖 | docs/features/index.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/menu/OtherScreens.kt | 已覆盖 | docs/features/index.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/menu/RegularFeaturesScreen.kt | 已覆盖 | docs/features/index.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/menu/SettingsScreen.kt | 已覆盖 | docs/features/index.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/schedule/CourseDetailScreen.kt | 已覆盖 | docs/features/schedule-and-exam.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/schedule/ScheduleDateLabels.kt | 已覆盖 | docs/features/schedule-and-exam.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/schedule/ScheduleScreen.kt | 已覆盖 | docs/features/schedule-and-exam.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/schedule/ScheduleViewModel.kt | 已覆盖 | docs/features/schedule-and-exam.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/signin/SigninScreen.kt | 已覆盖 | docs/features/signin.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/signin/SigninViewModel.kt | 已覆盖 | docs/features/signin.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/splash/SplashScreen.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/spoc/SpocAssignmentDetailScreen.kt | 已覆盖 | docs/features/spoc.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/spoc/SpocAssignmentsScreen.kt | 已覆盖 | docs/features/spoc.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/spoc/SpocViewModel.kt | 已覆盖 | docs/features/spoc.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/ygdk/YgdkClockinFormScreen.kt | 已覆盖 | docs/features/ygdk.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/ygdk/YgdkHomeScreen.kt | 已覆盖 | docs/features/ygdk.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/ygdk/YgdkViewModel.kt | 已覆盖 | docs/features/ygdk.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/theme/Theme.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/theme/Typography.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonTest/kotlin/cn/edu/ubaa/AppStartupDialogStateTest.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonTest/kotlin/cn/edu/ubaa/ComposeAppCommonTest.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonTest/kotlin/cn/edu/ubaa/ui/AuthViewModelInitializeAppTest.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonTest/kotlin/cn/edu/ubaa/ui/AuthViewModelTest.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonTest/kotlin/cn/edu/ubaa/ui/CgyyScreenLogicTest.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonTest/kotlin/cn/edu/ubaa/ui/CgyyViewModelTest.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonTest/kotlin/cn/edu/ubaa/ui/ClassroomViewModelTest.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonTest/kotlin/cn/edu/ubaa/ui/common/components/ReleaseNotesLinkParserTest.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonTest/kotlin/cn/edu/ubaa/ui/GradeScreenLogicTest.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonTest/kotlin/cn/edu/ubaa/ui/GradeViewModelTest.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonTest/kotlin/cn/edu/ubaa/ui/HomeTodoTest.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonTest/kotlin/cn/edu/ubaa/ui/JudgeViewModelTest.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonTest/kotlin/cn/edu/ubaa/ui/navigation/HomeBootstrapCoordinatorTest.kt | 已覆盖 | docs/features/index.md |
-| composeApp/src/commonTest/kotlin/cn/edu/ubaa/ui/screens/bykc/BykcCourseFiltersTest.kt | 已覆盖 | docs/features/bykc.md |
-| composeApp/src/commonTest/kotlin/cn/edu/ubaa/ui/screens/bykc/BykcTimeFormattersTest.kt | 已覆盖 | docs/features/bykc.md |
-| composeApp/src/commonTest/kotlin/cn/edu/ubaa/ui/screens/judge/JudgeAssignmentDisplayTest.kt | 已覆盖 | docs/features/judge.md |
-| composeApp/src/commonTest/kotlin/cn/edu/ubaa/ui/screens/schedule/ScheduleDateLabelsTest.kt | 已覆盖 | docs/features/schedule-and-exam.md |
-| composeApp/src/commonTest/kotlin/cn/edu/ubaa/ui/SpocViewModelTest.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/commonTest/kotlin/cn/edu/ubaa/ui/YgdkViewModelTest.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/iosMain/kotlin/cn/edu/ubaa/MainViewController.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/iosMain/kotlin/cn/edu/ubaa/ui/common/util/BackHandlerCompat.ios.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/iosMain/kotlin/cn/edu/ubaa/ui/common/util/PlatformImagePicker.ios.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/iosMain/kotlin/cn/edu/ubaa/ui/theme/Typography.ios.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/jsMain/kotlin/cn/edu/ubaa/ui/common/util/BackHandlerCompat.js.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/jsMain/kotlin/cn/edu/ubaa/ui/common/util/PlatformImagePicker.js.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/jsMain/kotlin/cn/edu/ubaa/ui/theme/Typography.js.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/jvmMain/kotlin/cn/edu/ubaa/main.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/jvmMain/kotlin/cn/edu/ubaa/ui/common/util/BackHandlerCompat.jvm.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/jvmMain/kotlin/cn/edu/ubaa/ui/common/util/PlatformImagePicker.jvm.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/jvmMain/kotlin/cn/edu/ubaa/ui/theme/Typography.jvm.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/jvmMain/resources/app-icon.png | 无需文档化 | N/A |
-| composeApp/src/wasmJsMain/kotlin/cn/edu/ubaa/ui/common/util/BackHandlerCompat.wasmJs.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/wasmJsMain/kotlin/cn/edu/ubaa/ui/common/util/PlatformImagePicker.wasmJs.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/wasmJsMain/kotlin/cn/edu/ubaa/ui/theme/Typography.wasmJs.kt | 已覆盖 | docs/tech/modules.md |
-| composeApp/src/webMain/kotlin/cn/edu/ubaa/main.kt | 已覆盖 | docs/tech/release-deployment.md |
-| composeApp/src/webMain/resources/apple-touch-icon.png | 无需文档化 | N/A |
-| composeApp/src/webMain/resources/favicon-16.png | 无需文档化 | N/A |
-| composeApp/src/webMain/resources/favicon-32.png | 无需文档化 | N/A |
-| composeApp/src/webMain/resources/favicon.ico | 无需文档化 | N/A |
-| composeApp/src/webMain/resources/index.html | 已覆盖 | docs/tech/release-deployment.md |
-| composeApp/src/webMain/resources/manifest.json | 已覆盖 | docs/tech/release-deployment.md |
-| composeApp/src/webMain/resources/pwa-icon-192.png | 无需文档化 | N/A |
-| composeApp/src/webMain/resources/pwa-icon-512.png | 无需文档化 | N/A |
-| composeApp/src/webMain/resources/pwa-icon.svg | 已覆盖 | docs/tech/release-deployment.md |
-| composeApp/src/webMain/resources/styles.css | 已覆盖 | docs/tech/release-deployment.md |
-| composeApp/src/webMain/resources/sw.js | 已覆盖 | docs/tech/release-deployment.md |
-| composeApp/src/webMain/resources/update.html | 已覆盖 | docs/tech/release-deployment.md |
-| composeApp/webpack.config.d/watch.js | 已覆盖 | docs/tech/configuration.md |
-| docs/_audit/source-inventory.md | 已覆盖 | docs/index.md |
-| docs/.vitepress/config.mts | 已覆盖 | docs/index.md |
-| docs/announcements/history.md | 已覆盖 | docs/index.md |
-| docs/announcements/index.md | 已覆盖 | docs/index.md |
-| docs/changelog/index.md | 已覆盖 | docs/index.md |
-| docs/features/auth-and-connection.md | 已覆盖 | docs/index.md |
-| docs/features/bykc.md | 已覆盖 | docs/index.md |
-| docs/features/cgyy.md | 已覆盖 | docs/index.md |
-| docs/features/classroom.md | 已覆盖 | docs/index.md |
-| docs/features/evaluation.md | 已覆盖 | docs/index.md |
-| docs/features/grades.md | 已覆盖 | docs/index.md |
-| docs/features/index.md | 已覆盖 | docs/index.md |
-| docs/features/judge.md | 已覆盖 | docs/index.md |
-| docs/features/schedule-and-exam.md | 已覆盖 | docs/index.md |
-| docs/features/signin.md | 已覆盖 | docs/index.md |
-| docs/features/spoc.md | 已覆盖 | docs/index.md |
-| docs/features/ygdk.md | 已覆盖 | docs/index.md |
-| docs/index.md | 已覆盖 | docs/index.md |
-| docs/tech/architecture.md | 已覆盖 | docs/index.md |
-| docs/tech/configuration.md | 已覆盖 | docs/index.md |
-| docs/tech/connection-modes.md | 已覆盖 | docs/index.md |
-| docs/tech/modules.md | 已覆盖 | docs/index.md |
-| docs/tech/release-deployment.md | 已覆盖 | docs/index.md |
-| docs/tech/server-routes.md | 已覆盖 | docs/index.md |
-| docs/tech/shared-api.md | 已覆盖 | docs/index.md |
-| docs/tech/state-storage.md | 已覆盖 | docs/index.md |
-| docs/tech/testing.md | 已覆盖 | docs/index.md |
-| docs/tech/troubleshooting.md | 已覆盖 | docs/index.md |
-| gradle.properties | 已覆盖 | docs/tech/configuration.md |
-| gradle/libs.versions.toml | 已覆盖 | docs/tech/configuration.md |
-| gradle/wrapper/gradle-wrapper.jar | 无需文档化 | N/A |
-| gradle/wrapper/gradle-wrapper.properties | 已覆盖 | docs/tech/configuration.md |
-| gradlew | 已覆盖 | docs/tech/configuration.md |
-| gradlew.bat | 已覆盖 | docs/tech/configuration.md |
-| iosApp/Configuration/Config.xcconfig | 已覆盖 | docs/tech/modules.md |
-| iosApp/iosApp.xcodeproj/project.pbxproj | 已覆盖 | docs/tech/modules.md |
-| iosApp/iosApp.xcodeproj/project.xcworkspace/contents.xcworkspacedata | 已覆盖 | docs/tech/modules.md |
-| iosApp/iosApp/Assets.xcassets/AccentColor.colorset/Contents.json | 已覆盖 | docs/tech/modules.md |
-| iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/app-icon-1024-dark.png | 无需文档化 | N/A |
-| iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/app-icon-1024-tinted.png | 无需文档化 | N/A |
-| iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/app-icon-1024.png | 无需文档化 | N/A |
-| iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/Contents.json | 已覆盖 | docs/tech/modules.md |
-| iosApp/iosApp/Assets.xcassets/Contents.json | 已覆盖 | docs/tech/modules.md |
-| iosApp/iosApp/ContentView.swift | 已覆盖 | docs/tech/modules.md |
-| iosApp/iosApp/Info.plist | 已覆盖 | docs/tech/modules.md |
-| iosApp/iosApp/iOSApp.swift | 已覆盖 | docs/tech/modules.md |
-| iosApp/iosApp/Preview Content/Preview Assets.xcassets/Contents.json | 已覆盖 | docs/tech/modules.md |
-| LICENSE | 无需文档化 | N/A |
-| package-lock.json | 已覆盖 | docs/tech/configuration.md |
-| package.json | 已覆盖 | docs/tech/configuration.md |
-| README.md | 已覆盖 | docs/index.md |
-| server/build.gradle.kts | 已覆盖 | docs/tech/configuration.md |
-| server/src/main/kotlin/cn/edu/ubaa/announcement/AnnouncementRoutes.kt | 已覆盖 | docs/announcements/index.md |
-| server/src/main/kotlin/cn/edu/ubaa/announcement/AnnouncementService.kt | 已覆盖 | docs/announcements/index.md |
-| server/src/main/kotlin/cn/edu/ubaa/Application.kt | 已覆盖 | docs/tech/server-routes.md |
-| server/src/main/kotlin/cn/edu/ubaa/auth/api/AuthRoutes.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| server/src/main/kotlin/cn/edu/ubaa/auth/api/AuthService.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| server/src/main/kotlin/cn/edu/ubaa/auth/api/Exceptions.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| server/src/main/kotlin/cn/edu/ubaa/auth/api/UserFacingErrors.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| server/src/main/kotlin/cn/edu/ubaa/auth/config/AuthConfig.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| server/src/main/kotlin/cn/edu/ubaa/auth/infra/DistributedLockManager.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| server/src/main/kotlin/cn/edu/ubaa/auth/infra/RedisRuntime.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| server/src/main/kotlin/cn/edu/ubaa/auth/jwt/JwtAuth.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| server/src/main/kotlin/cn/edu/ubaa/auth/portal/AcademicPortalSupport.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| server/src/main/kotlin/cn/edu/ubaa/auth/portal/AcademicPortalWarmupCoordinator.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| server/src/main/kotlin/cn/edu/ubaa/auth/session/PreLoginPersistence.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| server/src/main/kotlin/cn/edu/ubaa/auth/session/RedisCookieStorage.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| server/src/main/kotlin/cn/edu/ubaa/auth/session/RedisCookieStorageFactory.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| server/src/main/kotlin/cn/edu/ubaa/auth/session/RedisSessionStore.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| server/src/main/kotlin/cn/edu/ubaa/auth/session/RefreshTokenStore.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| server/src/main/kotlin/cn/edu/ubaa/auth/session/SessionManager.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| server/src/main/kotlin/cn/edu/ubaa/auth/upstream/ByxtService.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| server/src/main/kotlin/cn/edu/ubaa/auth/upstream/CasParser.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| server/src/main/kotlin/cn/edu/ubaa/bykc/BykcClient.kt | 已覆盖 | docs/features/bykc.md |
-| server/src/main/kotlin/cn/edu/ubaa/bykc/BykcCrypto.kt | 已覆盖 | docs/features/bykc.md |
-| server/src/main/kotlin/cn/edu/ubaa/bykc/BykcDebugConfig.kt | 已覆盖 | docs/features/bykc.md |
-| server/src/main/kotlin/cn/edu/ubaa/bykc/BykcExceptions.kt | 已覆盖 | docs/features/bykc.md |
-| server/src/main/kotlin/cn/edu/ubaa/bykc/BykcModels.kt | 已覆盖 | docs/features/bykc.md |
-| server/src/main/kotlin/cn/edu/ubaa/bykc/BykcRoutes.kt | 已覆盖 | docs/features/bykc.md |
-| server/src/main/kotlin/cn/edu/ubaa/bykc/BykcService.kt | 已覆盖 | docs/features/bykc.md |
-| server/src/main/kotlin/cn/edu/ubaa/cgyy/CgyyCaptchaSolver.kt | 已覆盖 | docs/features/cgyy.md |
-| server/src/main/kotlin/cn/edu/ubaa/cgyy/CgyyRoutes.kt | 已覆盖 | docs/features/cgyy.md |
-| server/src/main/kotlin/cn/edu/ubaa/cgyy/CgyyService.kt | 已覆盖 | docs/features/cgyy.md |
-| server/src/main/kotlin/cn/edu/ubaa/cgyy/CgyySigner.kt | 已覆盖 | docs/features/cgyy.md |
-| server/src/main/kotlin/cn/edu/ubaa/cgyy/CgyyZhjsClient.kt | 已覆盖 | docs/features/cgyy.md |
-| server/src/main/kotlin/cn/edu/ubaa/classroom/ClassroomClient.kt | 已覆盖 | docs/features/classroom.md |
-| server/src/main/kotlin/cn/edu/ubaa/classroom/ClassroomRoutes.kt | 已覆盖 | docs/features/classroom.md |
-| server/src/main/kotlin/cn/edu/ubaa/evaluation/EvaluationClient.kt | 已覆盖 | docs/features/evaluation.md |
-| server/src/main/kotlin/cn/edu/ubaa/evaluation/EvaluationRoutes.kt | 已覆盖 | docs/features/evaluation.md |
-| server/src/main/kotlin/cn/edu/ubaa/evaluation/EvaluationService.kt | 已覆盖 | docs/features/evaluation.md |
-| server/src/main/kotlin/cn/edu/ubaa/exam/ExamRoutes.kt | 已覆盖 | docs/features/schedule-and-exam.md |
-| server/src/main/kotlin/cn/edu/ubaa/exam/ExamService.kt | 已覆盖 | docs/features/schedule-and-exam.md |
-| server/src/main/kotlin/cn/edu/ubaa/grade/GradeRoutes.kt | 已覆盖 | docs/features/grades.md |
-| server/src/main/kotlin/cn/edu/ubaa/grade/GradeService.kt | 已覆盖 | docs/features/grades.md |
-| server/src/main/kotlin/cn/edu/ubaa/health/HealthSupport.kt | 已覆盖 | docs/tech/server-routes.md |
-| server/src/main/kotlin/cn/edu/ubaa/judge/JudgeClient.kt | 已覆盖 | docs/features/judge.md |
-| server/src/main/kotlin/cn/edu/ubaa/judge/JudgeRoutes.kt | 已覆盖 | docs/features/judge.md |
-| server/src/main/kotlin/cn/edu/ubaa/judge/JudgeService.kt | 已覆盖 | docs/features/judge.md |
-| server/src/main/kotlin/cn/edu/ubaa/judge/JudgeSupport.kt | 已覆盖 | docs/features/judge.md |
-| server/src/main/kotlin/cn/edu/ubaa/metrics/FunctionCounterBindings.kt | 已覆盖 | docs/tech/server-routes.md |
-| server/src/main/kotlin/cn/edu/ubaa/metrics/GaugeBindings.kt | 已覆盖 | docs/tech/server-routes.md |
-| server/src/main/kotlin/cn/edu/ubaa/metrics/LoginMetrics.kt | 已覆盖 | docs/tech/server-routes.md |
-| server/src/main/kotlin/cn/edu/ubaa/metrics/Observability.kt | 已覆盖 | docs/tech/server-routes.md |
-| server/src/main/kotlin/cn/edu/ubaa/schedule/ScheduleRoutes.kt | 已覆盖 | docs/features/schedule-and-exam.md |
-| server/src/main/kotlin/cn/edu/ubaa/schedule/ScheduleService.kt | 已覆盖 | docs/features/schedule-and-exam.md |
-| server/src/main/kotlin/cn/edu/ubaa/ServerRuntimeConfig.kt | 已覆盖 | docs/tech/server-routes.md |
-| server/src/main/kotlin/cn/edu/ubaa/signin/SigninClient.kt | 已覆盖 | docs/features/signin.md |
-| server/src/main/kotlin/cn/edu/ubaa/signin/SigninRoutes.kt | 已覆盖 | docs/features/signin.md |
-| server/src/main/kotlin/cn/edu/ubaa/signin/SigninService.kt | 已覆盖 | docs/features/signin.md |
-| server/src/main/kotlin/cn/edu/ubaa/spoc/SpocClient.kt | 已覆盖 | docs/features/spoc.md |
-| server/src/main/kotlin/cn/edu/ubaa/spoc/SpocRoutes.kt | 已覆盖 | docs/features/spoc.md |
-| server/src/main/kotlin/cn/edu/ubaa/spoc/SpocService.kt | 已覆盖 | docs/features/spoc.md |
-| server/src/main/kotlin/cn/edu/ubaa/spoc/SpocSupport.kt | 已覆盖 | docs/features/spoc.md |
-| server/src/main/kotlin/cn/edu/ubaa/user/UserRoutes.kt | 已覆盖 | docs/tech/modules.md |
-| server/src/main/kotlin/cn/edu/ubaa/user/UserService.kt | 已覆盖 | docs/tech/modules.md |
-| server/src/main/kotlin/cn/edu/ubaa/utils/HeadlessImageSupport.kt | 已覆盖 | docs/tech/server-routes.md |
-| server/src/main/kotlin/cn/edu/ubaa/utils/HttpClients.kt | 已覆盖 | docs/tech/server-routes.md |
-| server/src/main/kotlin/cn/edu/ubaa/utils/JwtUtil.kt | 已覆盖 | docs/tech/server-routes.md |
-| server/src/main/kotlin/cn/edu/ubaa/utils/UpstreamTimeouts.kt | 已覆盖 | docs/tech/server-routes.md |
-| server/src/main/kotlin/cn/edu/ubaa/utils/VpnCipher.kt | 已覆盖 | docs/tech/server-routes.md |
-| server/src/main/kotlin/cn/edu/ubaa/version/AppVersionRoutes.kt | 已覆盖 | docs/changelog/index.md |
-| server/src/main/kotlin/cn/edu/ubaa/version/AppVersionService.kt | 已覆盖 | docs/changelog/index.md |
-| server/src/main/kotlin/cn/edu/ubaa/ygdk/YgdkClient.kt | 已覆盖 | docs/features/ygdk.md |
-| server/src/main/kotlin/cn/edu/ubaa/ygdk/YgdkException.kt | 已覆盖 | docs/features/ygdk.md |
-| server/src/main/kotlin/cn/edu/ubaa/ygdk/YgdkRoutes.kt | 已覆盖 | docs/features/ygdk.md |
-| server/src/main/kotlin/cn/edu/ubaa/ygdk/YgdkService.kt | 已覆盖 | docs/features/ygdk.md |
-| server/src/main/resources/logback.xml | 已覆盖 | docs/tech/configuration.md |
-| server/src/test/kotlin/cn/edu/ubaa/announcement/AnnouncementRoutesTest.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/announcement/AnnouncementServiceTest.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/ApplicationMetricsTest.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/ApplicationTest.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/auth/api/AuthRoutesTest.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/auth/api/AuthServiceConcurrencyTest.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/auth/api/AuthServiceLoginMetricsTest.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/auth/api/AuthServiceResourceTest.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/auth/config/AuthConfigTest.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/auth/jwt/JwtTest.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/auth/portal/AcademicPortalSupportTest.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/auth/session/InMemorySessionSupport.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/auth/session/SessionManagerMetricsTest.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/auth/upstream/CasParserTest.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/bykc/BykcClientTest.kt | 已覆盖 | docs/features/bykc.md |
-| server/src/test/kotlin/cn/edu/ubaa/bykc/BykcCryptoTest.kt | 已覆盖 | docs/features/bykc.md |
-| server/src/test/kotlin/cn/edu/ubaa/bykc/BykcModelsTest.kt | 已覆盖 | docs/features/bykc.md |
-| server/src/test/kotlin/cn/edu/ubaa/bykc/BykcRoutesTest.kt | 已覆盖 | docs/features/bykc.md |
-| server/src/test/kotlin/cn/edu/ubaa/bykc/BykcServiceCacheTest.kt | 已覆盖 | docs/features/bykc.md |
-| server/src/test/kotlin/cn/edu/ubaa/bykc/BykcServiceDetailTest.kt | 已覆盖 | docs/features/bykc.md |
-| server/src/test/kotlin/cn/edu/ubaa/cgyy/CgyyCaptchaSolverTest.kt | 已覆盖 | docs/features/cgyy.md |
-| server/src/test/kotlin/cn/edu/ubaa/cgyy/CgyyRoutesTest.kt | 已覆盖 | docs/features/cgyy.md |
-| server/src/test/kotlin/cn/edu/ubaa/cgyy/CgyyServiceTest.kt | 已覆盖 | docs/features/cgyy.md |
-| server/src/test/kotlin/cn/edu/ubaa/cgyy/CgyySignerTest.kt | 已覆盖 | docs/features/cgyy.md |
-| server/src/test/kotlin/cn/edu/ubaa/exam/ExamRoutesTest.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/grade/GradeRoutesTest.kt | 已覆盖 | docs/features/grades.md |
-| server/src/test/kotlin/cn/edu/ubaa/grade/GradeServiceTest.kt | 已覆盖 | docs/features/grades.md |
-| server/src/test/kotlin/cn/edu/ubaa/health/HealthSupportTest.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/judge/JudgeClientTest.kt | 已覆盖 | docs/features/judge.md |
-| server/src/test/kotlin/cn/edu/ubaa/judge/JudgeRealIntegrationTest.kt | 已覆盖 | docs/features/judge.md |
-| server/src/test/kotlin/cn/edu/ubaa/judge/JudgeRoutesTest.kt | 已覆盖 | docs/features/judge.md |
-| server/src/test/kotlin/cn/edu/ubaa/judge/JudgeServiceTest.kt | 已覆盖 | docs/features/judge.md |
-| server/src/test/kotlin/cn/edu/ubaa/judge/JudgeSupportTest.kt | 已覆盖 | docs/features/judge.md |
-| server/src/test/kotlin/cn/edu/ubaa/metrics/LoginStatsStoreTest.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/metrics/ObservabilityTest.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/schedule/ScheduleRoutesTest.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/signin/SigninClientTest.kt | 已覆盖 | docs/features/signin.md |
-| server/src/test/kotlin/cn/edu/ubaa/spoc/SpocClientTest.kt | 已覆盖 | docs/features/spoc.md |
-| server/src/test/kotlin/cn/edu/ubaa/spoc/SpocRoutesTest.kt | 已覆盖 | docs/features/spoc.md |
-| server/src/test/kotlin/cn/edu/ubaa/spoc/SpocServiceTest.kt | 已覆盖 | docs/features/spoc.md |
-| server/src/test/kotlin/cn/edu/ubaa/spoc/SpocSupportTest.kt | 已覆盖 | docs/features/spoc.md |
-| server/src/test/kotlin/cn/edu/ubaa/utils/VpnCipherTest.kt | 已覆盖 | docs/features/signin.md |
-| server/src/test/kotlin/cn/edu/ubaa/version/AppVersionServiceTest.kt | 已覆盖 | docs/tech/testing.md |
-| server/src/test/kotlin/cn/edu/ubaa/ygdk/YgdkRoutesTest.kt | 已覆盖 | docs/features/ygdk.md |
-| server/src/test/kotlin/cn/edu/ubaa/ygdk/YgdkServiceTest.kt | 已覆盖 | docs/features/ygdk.md |
-| settings.gradle.kts | 已覆盖 | docs/index.md |
-| shared/build.gradle.kts | 已覆盖 | docs/tech/configuration.md |
-| shared/src/androidMain/kotlin/cn/edu/ubaa/api/ApiClient.android.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/androidMain/kotlin/cn/edu/ubaa/api/PlatformAesCbcNoPadding.android.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/androidMain/kotlin/cn/edu/ubaa/api/PlatformAesCfbNoPadding.android.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/androidMain/kotlin/cn/edu/ubaa/api/PlatformAesEcbPkcs5Padding.android.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/androidMain/kotlin/cn/edu/ubaa/api/PlatformImageRasterDecoder.android.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/androidMain/kotlin/cn/edu/ubaa/api/PlatformMd5Hex.android.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/androidMain/kotlin/cn/edu/ubaa/api/PlatformRsaPkcs1Encrypt.android.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/androidMain/kotlin/cn/edu/ubaa/Platform.android.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/auth/AnnouncementService.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/auth/AuthApi.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/auth/LoginStatsReporter.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/auth/NetworkUtils.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/auth/UpdateService.kt | 已覆盖 | docs/features/auth-and-connection.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/ConnectionRuntime.kt | 已覆盖 | docs/tech/connection-modes.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/core/ApiClient.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/core/ApiFactory.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/core/ApiService.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/feature/BykcApi.kt | 已覆盖 | docs/features/bykc.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/feature/CgyyApi.kt | 已覆盖 | docs/features/cgyy.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/feature/ClassroomApi.kt | 已覆盖 | docs/features/classroom.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/feature/EvaluationService.kt | 已覆盖 | docs/features/evaluation.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/feature/GradeApi.kt | 已覆盖 | docs/features/grades.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/feature/JudgeApi.kt | 已覆盖 | docs/features/judge.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/feature/ScheduleApi.kt | 已覆盖 | docs/features/schedule-and-exam.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/feature/SigninApi.kt | 已覆盖 | docs/features/signin.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/feature/SpocApi.kt | 已覆盖 | docs/features/spoc.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/feature/YgdkApi.kt | 已覆盖 | docs/features/ygdk.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/SigninLoginNameSupport.kt | 已覆盖 | docs/features/signin.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalBykcApi.kt | 已覆盖 | docs/features/bykc.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalBykcCrypto.kt | 已覆盖 | docs/features/bykc.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalCgyyApi.kt | 已覆盖 | docs/features/cgyy.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalCgyyCaptchaSupport.kt | 已覆盖 | docs/features/cgyy.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalCgyySigner.kt | 已覆盖 | docs/features/cgyy.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalClassroomApi.kt | 已覆盖 | docs/features/classroom.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalConnectionAuth.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalEvaluationService.kt | 已覆盖 | docs/features/evaluation.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalGradeApi.kt | 已覆盖 | docs/features/grades.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalJudgeApi.kt | 已覆盖 | docs/features/judge.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalScheduleApi.kt | 已覆盖 | docs/features/schedule-and-exam.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalSigninApi.kt | 已覆盖 | docs/features/signin.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalSpocApi.kt | 已覆盖 | docs/features/spoc.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalSpocSupport.kt | 已覆盖 | docs/features/spoc.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalWebVpnSupport.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalYgdkApi.kt | 已覆盖 | docs/features/ygdk.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/plantform/PlatformAesCbcNoPadding.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/plantform/PlatformAesCfbNoPadding.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/plantform/PlatformAesEcbPkcs5Padding.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/plantform/PlatformImageRasterDecoder.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/plantform/PlatformMd5Hex.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/plantform/PlatformRsaPkcs1Encrypt.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/ResettableSharedInstance.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/storage/AnnouncementReadStore.kt | 已覆盖 | docs/tech/state-storage.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/storage/BykcCourseFilterStore.kt | 已覆盖 | docs/tech/state-storage.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/storage/CgyyReservationFormStore.kt | 已覆盖 | docs/tech/state-storage.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/storage/CredentialStore.kt | 已覆盖 | docs/tech/state-storage.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/api/storage/TokenStore.kt | 已覆盖 | docs/tech/state-storage.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/AppInfo.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/Greeting.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/model/dto/Auth.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/model/dto/Bykc.kt | 已覆盖 | docs/features/bykc.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/model/dto/BykcSerialization.kt | 已覆盖 | docs/features/bykc.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/model/dto/Cgyy.kt | 已覆盖 | docs/features/cgyy.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/model/dto/Classroom.kt | 已覆盖 | docs/features/classroom.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/model/dto/Exam.kt | 已覆盖 | docs/features/schedule-and-exam.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/model/dto/Grade.kt | 已覆盖 | docs/features/grades.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/model/dto/Judge.kt | 已覆盖 | docs/features/judge.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/model/dto/Schedule.kt | 已覆盖 | docs/features/schedule-and-exam.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/model/dto/Signin.kt | 已覆盖 | docs/features/signin.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/model/dto/Spoc.kt | 已覆盖 | docs/features/spoc.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/model/dto/UserInfo.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/model/dto/Ygdk.kt | 已覆盖 | docs/features/ygdk.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/model/evaluation/EvaluationModel.kt | 已覆盖 | docs/features/evaluation.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/Platform.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonMain/kotlin/cn/edu/ubaa/repository/TermRepository.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/AnnouncementReadStoreTest.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/AnnouncementServiceTest.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/ApiFactoryDispatchTest.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/AuthServiceTest.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/BykcCourseFilterStoreTest.kt | 已覆盖 | docs/features/bykc.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/CgyyApiTest.kt | 已覆盖 | docs/features/cgyy.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/ConnectionRuntimeTest.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/JudgeApiTest.kt | 已覆盖 | docs/features/judge.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalAuthServiceBackendTest.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalAuthSessionStoreTest.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalBykcApiBackendTest.kt | 已覆盖 | docs/features/bykc.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalBykcCryptoTest.kt | 已覆盖 | docs/features/bykc.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalCgyyApiBackendTest.kt | 已覆盖 | docs/features/cgyy.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalCgyyCaptchaSolverTest.kt | 已覆盖 | docs/features/cgyy.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalCgyySignerTest.kt | 已覆盖 | docs/features/cgyy.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalClassroomApiBackendTest.kt | 已覆盖 | docs/features/classroom.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalConnectionTestSupport.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalCookieStoreTest.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalEvaluationServiceBackendTest.kt | 已覆盖 | docs/features/evaluation.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalJudgeApiBackendTest.kt | 已覆盖 | docs/features/judge.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalScheduleApiBackendTest.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalSigninApiBackendTest.kt | 已覆盖 | docs/features/signin.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/SigninLoginNameSupportTest.kt | 已覆盖 | docs/features/signin.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalSpocApiBackendTest.kt | 已覆盖 | docs/features/spoc.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalSpocSupportTest.kt | 已覆盖 | docs/features/spoc.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalWebVpnSupportTest.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/LocalYgdkApiBackendTest.kt | 已覆盖 | docs/features/ygdk.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/NetworkUtilsTest.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/SpocApiTest.kt | 已覆盖 | docs/features/spoc.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/UpdateServiceTest.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/api/YgdkApiTest.kt | 已覆盖 | docs/features/ygdk.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/model/dto/CgyyOrderCancellationTest.kt | 已覆盖 | docs/features/cgyy.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/model/dto/CgyyOrderDateDisplayTest.kt | 已覆盖 | docs/features/cgyy.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/model/dto/CgyyOrderStatusTest.kt | 已覆盖 | docs/features/cgyy.md |
-| shared/src/commonTest/kotlin/cn/edu/ubaa/SharedCommonTest.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/iosMain/kotlin/cn/edu/ubaa/api/ApiClient.ios.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/iosMain/kotlin/cn/edu/ubaa/api/PlatformAesCbcNoPadding.ios.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/iosMain/kotlin/cn/edu/ubaa/api/PlatformAesCfbNoPadding.ios.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/iosMain/kotlin/cn/edu/ubaa/api/PlatformAesEcbPkcs5Padding.ios.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/iosMain/kotlin/cn/edu/ubaa/api/PlatformImageRasterDecoder.ios.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/iosMain/kotlin/cn/edu/ubaa/api/PlatformMd5Hex.ios.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/iosMain/kotlin/cn/edu/ubaa/api/PlatformRsaPkcs1Encrypt.ios.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/iosMain/kotlin/cn/edu/ubaa/Platform.ios.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/jsMain/kotlin/cn/edu/ubaa/api/ApiClient.js.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/jsMain/kotlin/cn/edu/ubaa/api/PlatformAesCbcNoPadding.js.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/jsMain/kotlin/cn/edu/ubaa/api/PlatformAesCfbNoPadding.js.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/jsMain/kotlin/cn/edu/ubaa/api/PlatformAesEcbPkcs5Padding.js.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/jsMain/kotlin/cn/edu/ubaa/api/PlatformImageRasterDecoder.js.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/jsMain/kotlin/cn/edu/ubaa/api/PlatformMd5Hex.js.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/jsMain/kotlin/cn/edu/ubaa/api/PlatformRsaPkcs1Encrypt.js.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/jsMain/kotlin/cn/edu/ubaa/Platform.js.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/jvmMain/kotlin/cn/edu/ubaa/api/ApiClient.jvm.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/jvmMain/kotlin/cn/edu/ubaa/api/PlatformAesCbcNoPadding.jvm.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/jvmMain/kotlin/cn/edu/ubaa/api/PlatformAesCfbNoPadding.jvm.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/jvmMain/kotlin/cn/edu/ubaa/api/PlatformAesEcbPkcs5Padding.jvm.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/jvmMain/kotlin/cn/edu/ubaa/api/PlatformImageRasterDecoder.jvm.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/jvmMain/kotlin/cn/edu/ubaa/api/PlatformMd5Hex.jvm.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/jvmMain/kotlin/cn/edu/ubaa/api/PlatformRsaPkcs1Encrypt.jvm.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/jvmMain/kotlin/cn/edu/ubaa/Platform.jvm.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/jvmTest/kotlin/cn/edu/ubaa/api/LocalJudgeRealIntegrationTest.kt | 已覆盖 | docs/features/judge.md |
-| shared/src/jvmTest/kotlin/cn/edu/ubaa/api/LocalSigninRealIntegrationTest.kt | 已覆盖 | docs/features/signin.md |
-| shared/src/wasmJsMain/kotlin/cn/edu/ubaa/api/ApiClient.wasm.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/wasmJsMain/kotlin/cn/edu/ubaa/api/PlatformAesCbcNoPadding.wasmJs.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/wasmJsMain/kotlin/cn/edu/ubaa/api/PlatformAesCfbNoPadding.wasmJs.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/wasmJsMain/kotlin/cn/edu/ubaa/api/PlatformAesEcbPkcs5Padding.wasmJs.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/wasmJsMain/kotlin/cn/edu/ubaa/api/PlatformImageRasterDecoder.wasmJs.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/wasmJsMain/kotlin/cn/edu/ubaa/api/PlatformMd5Hex.wasmJs.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/wasmJsMain/kotlin/cn/edu/ubaa/api/PlatformRsaPkcs1Encrypt.wasmJs.kt | 已覆盖 | docs/tech/shared-api.md |
-| shared/src/wasmJsMain/kotlin/cn/edu/ubaa/Platform.wasmJs.kt | 已覆盖 | docs/tech/shared-api.md |
+| 连接模式 | `shared/src/commonMain/kotlin/cn/edu/ubaa/api/ConnectionRuntime.kt`、`shared/src/commonMain/kotlin/cn/edu/ubaa/api/core/ApiFactory.kt`、`shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalWebVpnSupport.kt` | `docs/features/auth-and-connection.md`、`docs/tech/connection-modes.md` |
+| CGYY | `shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalCgyyApi.kt`、`server/src/main/kotlin/cn/edu/ubaa/cgyy/CgyyRoutes.kt`、`server/src/main/kotlin/cn/edu/ubaa/cgyy/CgyyService.kt`、`server/src/main/kotlin/cn/edu/ubaa/cgyy/CgyyZhjsClient.kt` | `docs/features/cgyy.md`、`docs/tech/connection-modes.md` |
+| Judge | `shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalJudgeApi.kt`、`server/src/main/kotlin/cn/edu/ubaa/judge/JudgeRoutes.kt`、`server/src/main/kotlin/cn/edu/ubaa/judge/JudgeService.kt`、`server/src/main/kotlin/cn/edu/ubaa/judge/JudgeSupport.kt` | `docs/features/judge.md` |
+| LibBook | `shared/src/commonMain/kotlin/cn/edu/ubaa/api/feature/LibBookApi.kt`、`shared/src/commonMain/kotlin/cn/edu/ubaa/api/local/LocalLibBookApi.kt`、`server/src/main/kotlin/cn/edu/ubaa/libbook/LibBookRoutes.kt`、`server/src/main/kotlin/cn/edu/ubaa/libbook/LibBookService.kt`、`composeApp/src/commonMain/kotlin/cn/edu/ubaa/ui/screens/libbook/` | `docs/features/libbook.md`、`docs/tech/server-routes.md`、`docs/tech/shared-api.md` |
+| 版本检查 | `shared/src/commonMain/kotlin/cn/edu/ubaa/api/auth/UpdateService.kt`、`server/src/main/kotlin/cn/edu/ubaa/version/AppVersionService.kt`、`server/src/main/kotlin/cn/edu/ubaa/version/AppVersionRoutes.kt` | `docs/tech/shared-api.md`、`docs/tech/configuration.md`、`docs/changelog/index.md` |
+| 发布与 docs 部署 | `.github/workflows/release.yml`、`.github/workflows/docs.yml`、`build.gradle.kts`、`buildSrc/src/main/kotlin/cn/edu/ubaa/gradle/UploadLatestReleaseToBhpanTask.kt` | `docs/tech/release-deployment.md`、`docs/tech/testing.md` |
+
+## 备注
+
+- 当前仓库不存在 `harmonyApp/`。
+- 当前仓库不存在 `.github/workflows/upload.yml`；Web Wasm 部署由 `.github/workflows/release.yml` 处理。
+- `docs/.vitepress/dist/` 和 `docs/.vitepress/cache/` 是生成产物，按计划排除。
+- `local.properties` 是本机私密配置，按计划排除。
