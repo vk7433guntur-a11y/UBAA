@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.HowToReg
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Card
@@ -32,54 +31,49 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
-private data class AdvancedFeatureItem(
+internal data class AdvancedFeatureItem(
     val id: String,
     val title: String,
     val description: String,
     val icon: ImageVector,
 )
 
+internal fun advancedFeatureItems(): List<AdvancedFeatureItem> =
+    listOf(
+        AdvancedFeatureItem(
+            id = "cgyy",
+            title = "研讨室预约",
+            description = "查询、提交和管理研讨室预约",
+            icon = Icons.Default.DateRange,
+        ),
+        AdvancedFeatureItem(
+            id = "ygdk",
+            title = "阳光打卡",
+            description = "查看记录并提交体育活动打卡",
+            icon = Icons.Default.WbSunny,
+        ),
+        AdvancedFeatureItem(
+            id = "evaluation",
+            title = "自动评教",
+            description = "一键完成学期末评教任务",
+            icon = Icons.Default.AssignmentTurnedIn,
+        ),
+        AdvancedFeatureItem(
+            id = "more",
+            title = "更多功能",
+            description = "更多高级功能正在开发中...",
+            icon = Icons.Default.MoreHoriz,
+        ),
+    )
+
 @Composable
 fun AdvancedFeaturesScreen(
-    onSigninClick: () -> Unit,
     onCgyyClick: () -> Unit,
     onEvaluationClick: () -> Unit,
     onYgdkClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-  val features =
-      listOf(
-          AdvancedFeatureItem(
-              id = "signin",
-              title = "课程签到",
-              description = "快速完成课堂签到",
-              icon = Icons.Default.HowToReg,
-          ),
-          AdvancedFeatureItem(
-              id = "cgyy",
-              title = "研讨室预约",
-              description = "查询、提交和管理研讨室预约",
-              icon = Icons.Default.DateRange,
-          ),
-          AdvancedFeatureItem(
-              id = "ygdk",
-              title = "阳光打卡",
-              description = "查看记录并提交体育活动打卡",
-              icon = Icons.Default.WbSunny,
-          ),
-          AdvancedFeatureItem(
-              id = "evaluation",
-              title = "自动评教",
-              description = "一键完成学期末评教任务",
-              icon = Icons.Default.AssignmentTurnedIn,
-          ),
-          AdvancedFeatureItem(
-              id = "more",
-              title = "更多功能",
-              description = "更多高级功能正在开发中...",
-              icon = Icons.Default.MoreHoriz,
-          ),
-      )
+  val features = advancedFeatureItems()
 
   Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
     LazyVerticalGrid(
@@ -92,7 +86,6 @@ fun AdvancedFeaturesScreen(
             feature = feature,
             onClick = {
               when (feature.id) {
-                "signin" -> onSigninClick()
                 "cgyy" -> onCgyyClick()
                 "ygdk" -> onYgdkClick()
                 "evaluation" -> onEvaluationClick()
