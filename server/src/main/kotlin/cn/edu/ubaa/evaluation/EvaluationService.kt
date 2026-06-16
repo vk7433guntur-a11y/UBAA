@@ -19,10 +19,9 @@ class EvaluationService {
    *
    * 执行流程：
    * 1. 初始化评教系统会话（CAS认证）
-   * 2. 获取当前学期代码
-   * 3. 获取所有评教任务
-   * 4. 对每个任务，获取问卷列表
-   * 5. 对每个问卷，分别获取未评教课程（sfyp=0）和已评教课程（sfyp=1）
+   * 2. 获取所有评教任务
+   * 3. 对每个任务，获取问卷列表
+   * 4. 对每个问卷，按上游默认条件获取最新待评课程
    * 6. 返回汇总后的课程列表和进度信息
    *
    * @param username 用户学号。
@@ -39,15 +38,6 @@ class EvaluationService {
         )
       }
 
-      val xnxq = client.fetchCurrentXnxq()
-      if (xnxq == null) {
-        log.warn("Failed to fetch xnxq for user: $username")
-        return@withUpstreamDeadline EvaluationCoursesResponse(
-            courses = emptyList(),
-            progress = EvaluationProgress(0, 0, 0),
-        )
-      }
-
       val tasks = client.fetchTasks()
       // 使用 map 以课程唯一键去重，若任一来源标记已评教，则合并结果也标记已评教
       val courseMap = mutableMapOf<String, EvaluationCourse>()
@@ -57,13 +47,8 @@ class EvaluationService {
         for (wj in questionnaires) {
           val msid = wj.msid ?: "1"
 
-          // 获取未评教课程 (sfyp=0)
-          val pendingCourses = client.fetchCourses(task.rwid, wj.wjid, xnxq, msid, "0")
-          mergeCourses(courseMap, pendingCourses, task.rwid, wj.wjid, xnxq, msid, false)
-
-          // 获取已评教课程 (sfyp=1)
-          val evaluatedCourses = client.fetchCourses(task.rwid, wj.wjid, xnxq, msid, "1")
-          mergeCourses(courseMap, evaluatedCourses, task.rwid, wj.wjid, xnxq, msid, true)
+          val pendingCourses = client.fetchCourses(task.rwid, wj.wjid)
+          mergeCourses(courseMap, pendingCourses, task.rwid, wj.wjid, null, msid, false)
         }
       }
 
@@ -96,15 +81,10 @@ class EvaluationService {
    * ```
    *    - 若没有待评教任务，则直接返回空列表（用户已完成所有评教）
    * ```
-   * 3. 获取当前学期代码
-   * 4. 获取所有评教任务
-   * 5. 对每个任务，获取问卷列表
-   * 6. 对每个问卷，调用 getRequiredReviewsData（sfyp=0）获取**未评教**的课程
-   *
-   * ```
-   *    - 参数 sfyp=0 表示"是否已评教=否"，已经由服务器过滤
-   * ```
-   * 7. 返回汇总后的待评教课程列表
+   * 3. 获取所有评教任务
+   * 4. 对每个任务，获取问卷列表
+   * 5. 对每个问卷，调用 getRequiredReviewsData 的默认查询获取最新待评课程
+   * 6. 返回汇总后的待评教课程列表
    *
    * **重要**：返回的课程列表已经是未评教的课程，前端可直接展示。
    *
@@ -195,36 +175,26 @@ class EvaluationService {
 
           allQuestions.forEachIndexed { i, q ->
             val tmlx = q["tmlx"]?.jsonPrimitive?.content ?: "1"
+            val isChoiceQuestion = tmlx == "1"
             val tmxxlist = q["tmxxlist"]?.jsonArray ?: emptyJsonArray
-            if (tmxxlist.isEmpty()) return@forEachIndexed
 
-            val firstOptionId = tmxxlist[0].jsonObject["tmxxid"]
+            val firstOptionId = tmxxlist.firstOrNull()?.jsonObject?.get("tmxxid")
             val selectedOptionId =
-                if (i == randomIndex && tmxxlist.size > 1) {
+                if (isChoiceQuestion && i == randomIndex && tmxxlist.size > 1) {
                   tmxxlist[1].jsonObject["tmxxid"]
-                } else {
+                } else if (isChoiceQuestion) {
                   firstOptionId
+                } else {
+                  null
                 }
 
             pjxxlist.add(
                 buildJsonObject {
                   put("sjly", "1")
-                  put("stlx", tmlx)
+                  put("stlx", if (isChoiceQuestion) "1" else "6")
                   put("wjid", course.wjid)
                   put("wjssrwid", pjjg["wjssrwid"] ?: JsonNull)
-
-                  // 填空题 (tmlx=6) 特殊处理：使用第一个选项 ID
-                  // 其他题型使用空字符串
-                  if (tmlx == "6") {
-                    if (firstOptionId != null) {
-                      put("wjstctid", firstOptionId)
-                    } else {
-                      put("wjstctid", "")
-                    }
-                  } else {
-                    put("wjstctid", "")
-                  }
-
+                  put("wjstctid", if (isChoiceQuestion) JsonPrimitive("") else firstOptionId ?: JsonPrimitive(""))
                   put("wjstid", q["tmid"] ?: JsonNull)
 
                   putJsonArray("xxdalist") { selectedOptionId?.let { add(it) } }
@@ -292,27 +262,28 @@ class EvaluationService {
       courses: List<SpocCourse>,
       rwid: String,
       wjid: String,
-      xnxq: String,
+      xnxq: String?,
       msid: String,
       isEvaluated: Boolean,
   ) {
     courses.forEach { spocCourse ->
       val key = "${rwid}_${wjid}_${spocCourse.kcdm}_${spocCourse.bpdm}"
       val existing = courseMap[key]
+      val evaluatedByUpstream = (spocCourse.ypjcs ?: 0) > 0
 
       val merged =
           EvaluationCourse(
               id = key,
               kcmc = spocCourse.kcmc,
               bpmc = spocCourse.bpmc ?: existing?.bpmc ?: "未知教师",
-              isEvaluated = isEvaluated || existing?.isEvaluated == true,
+              isEvaluated = isEvaluated || evaluatedByUpstream || existing?.isEvaluated == true,
               rwid = rwid,
               wjid = wjid,
               kcdm = spocCourse.kcdm,
               bpdm = spocCourse.bpdm,
               pjrdm = spocCourse.pjrdm ?: existing?.pjrdm,
               pjrmc = spocCourse.pjrmc ?: existing?.pjrmc,
-              xnxq = xnxq,
+              xnxq = spocCourse.xnxq ?: xnxq,
               msid = msid,
               zdmc = spocCourse.zdmc ?: existing?.zdmc ?: "STID",
               ypjcs = spocCourse.ypjcs ?: existing?.ypjcs ?: 0,
