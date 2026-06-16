@@ -414,7 +414,10 @@ internal class LocalEvaluationServiceBackend : EvaluationServiceBackend {
       put("stlx", if (isChoiceQuestion) "1" else "6")
       put("wjid", course.wjid)
       put("wjssrwid", payload["wjssrwid"] ?: JsonNull)
-      put("wjstctid", if (isChoiceQuestion) JsonPrimitive("") else firstOptionId ?: JsonPrimitive(""))
+      put(
+          "wjstctid",
+          if (isChoiceQuestion) JsonPrimitive("") else firstOptionId ?: JsonPrimitive(""),
+      )
       put("wjstid", question["tmid"] ?: JsonNull)
       putJsonArray("xxdalist") { if (selectedOptionId != null) add(selectedOptionId) }
     }

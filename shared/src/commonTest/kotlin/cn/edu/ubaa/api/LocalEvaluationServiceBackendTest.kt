@@ -94,35 +94,35 @@ class LocalEvaluationServiceBackendTest {
             request.url.encodedPath == "/pjxt/evaluationMethodSix/getRequiredReviewsData" -> {
           assertEquals(null, request.url.parameters["sfyp"])
           assertEquals(null, request.url.parameters["xnxq"])
-            respondJson(
-                """
-                {
-                  "code": 200,
-                  "result": [
-                    {
-                      "kcdm": "CS101",
-                      "kcmc": "操作系统",
-                      "bpmc": "李老师",
-                      "bpdm": "T001",
-                      "pjrdm": "22373333",
-                      "pjrmc": "测试学生",
-                      "zdmc": "STID",
-                      "ypjcs": 0,
-                      "xypjcs": 1,
-                      "sxz": "1",
-                      "rwh": "rwh-1",
-                      "xn": "2025-2026",
-                      "xq": "1",
-                      "xnxq": "2025-20261",
-                      "pjlxid": "2",
-                      "sfksqbpj": "1",
-                      "yxsfktjst": "0"
-                    }
-                  ]
-                }
-                """
-                    .trimIndent()
-            )
+          respondJson(
+              """
+              {
+                "code": 200,
+                "result": [
+                  {
+                    "kcdm": "CS101",
+                    "kcmc": "操作系统",
+                    "bpmc": "李老师",
+                    "bpdm": "T001",
+                    "pjrdm": "22373333",
+                    "pjrmc": "测试学生",
+                    "zdmc": "STID",
+                    "ypjcs": 0,
+                    "xypjcs": 1,
+                    "sxz": "1",
+                    "rwh": "rwh-1",
+                    "xn": "2025-2026",
+                    "xq": "1",
+                    "xnxq": "2025-20261",
+                    "pjlxid": "2",
+                    "sfksqbpj": "1",
+                    "yxsfktjst": "0"
+                  }
+                ]
+              }
+              """
+                  .trimIndent()
+          )
         }
         else -> error("Unexpected url: ${request.url}")
       }
@@ -197,8 +197,7 @@ class LocalEvaluationServiceBackendTest {
               )
             }
             request.url.host == "spoc.buaa.edu.cn" &&
-                request.url.encodedPath ==
-                    "/pjxt/evaluationMethodSix/getRequiredReviewsData" -> {
+                request.url.encodedPath == "/pjxt/evaluationMethodSix/getRequiredReviewsData" -> {
               assertEquals("wj-latest", request.url.parameters["wjid"])
               assertEquals(null, request.url.parameters["sfyp"])
               assertEquals(null, request.url.parameters["xnxq"])
@@ -537,7 +536,9 @@ class LocalEvaluationServiceBackendTest {
         subjectiveAnswers.forEach { answer ->
           val answerObject = answer.jsonObject
           assertEquals("6", answerObject["stlx"]?.jsonPrimitive?.contentOrNull)
-          assertTrue(answerObject["wjstctid"]?.jsonPrimitive?.contentOrNull in setOf("8290", "8291"))
+          assertTrue(
+              answerObject["wjstctid"]?.jsonPrimitive?.contentOrNull in setOf("8290", "8291")
+          )
           assertEquals(0, answerObject["xxdalist"]?.jsonArray?.size)
         }
         assertFalse(

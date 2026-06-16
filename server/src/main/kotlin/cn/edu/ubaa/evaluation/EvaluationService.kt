@@ -194,7 +194,11 @@ class EvaluationService {
                   put("stlx", if (isChoiceQuestion) "1" else "6")
                   put("wjid", course.wjid)
                   put("wjssrwid", pjjg["wjssrwid"] ?: JsonNull)
-                  put("wjstctid", if (isChoiceQuestion) JsonPrimitive("") else firstOptionId ?: JsonPrimitive(""))
+                  put(
+                      "wjstctid",
+                      if (isChoiceQuestion) JsonPrimitive("")
+                      else firstOptionId ?: JsonPrimitive(""),
+                  )
                   put("wjstid", q["tmid"] ?: JsonNull)
 
                   putJsonArray("xxdalist") { selectedOptionId?.let { add(it) } }
