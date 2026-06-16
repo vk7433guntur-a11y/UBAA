@@ -801,7 +801,6 @@ fun MainAppScreen(
               )
           AppScreen.ADVANCED ->
               AdvancedFeaturesScreen(
-                  onSigninClick = { navigateTo(AppScreen.SIGNIN) },
                   onCgyyClick = { navigateTo(AppScreen.CGYY_HOME) },
                   onEvaluationClick = { navigateTo(AppScreen.EVALUATION) },
                   onYgdkClick = { navigateTo(AppScreen.YGDK_HOME) },

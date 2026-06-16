@@ -14,12 +14,14 @@ shared API 是客户端和服务端之间的稳定层。UI 不直接拼接服务
 
 - 认证与用户：`AuthApi.kt`、`AnnouncementService.kt`、`UpdateService.kt`。
 - 课程与学习：`ScheduleApi.kt`、`GradeApi.kt`、`SpocApi.kt`、`JudgeApi.kt`。
-- 校园服务：`BykcApi.kt`、`ClassroomApi.kt`、`SigninApi.kt`、`CgyyApi.kt`、`YgdkApi.kt`、`EvaluationService.kt`。
+- 校园服务：`BykcApi.kt`、`ClassroomApi.kt`、`SigninApi.kt`、`CgyyApi.kt`、`LibBookApi.kt`、`YgdkApi.kt`、`EvaluationService.kt`。
 - 存储：Token、凭据、公告已读、博雅筛选、研讨室表单。
 
 ## 兼容性
 
 服务端返回字段要兼容已发布客户端。尤其是版本检查、错误响应、成绩和作业 DTO，服务端能兼容时优先在服务端做向后兼容。
+
+版本检查响应当前同时返回 `latestVersion`、`status`、`updateAvailable`、`downloadUrl`、`releaseNotes`，并保留旧客户端兼容字段 `serverVersion` 和 `aligned`。
 
 ## 来源文件
 
@@ -29,6 +31,8 @@ shared API 是客户端和服务端之间的稳定层。UI 不直接拼接服务
 - `shared/src/commonMain/kotlin/cn/edu/ubaa/api/auth/UpdateService.kt`
 - `shared/src/commonMain/kotlin/cn/edu/ubaa/api/feature/GradeApi.kt`
 - `shared/src/commonMain/kotlin/cn/edu/ubaa/api/feature/JudgeApi.kt`
+- `shared/src/commonMain/kotlin/cn/edu/ubaa/api/feature/LibBookApi.kt`
 - `shared/src/commonMain/kotlin/cn/edu/ubaa/model/dto/Auth.kt`
 - `shared/src/commonMain/kotlin/cn/edu/ubaa/model/dto/Judge.kt`
+- `shared/src/commonMain/kotlin/cn/edu/ubaa/model/dto/LibBook.kt`
 - `shared/src/commonTest/kotlin/cn/edu/ubaa/api/ApiFactoryDispatchTest.kt`

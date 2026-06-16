@@ -1,6 +1,6 @@
 # 研讨室预约
 
-研讨室预约模块覆盖场地查询、预约目的、日期时段、预约提交、订单列表、取消订单和门锁码。直连模式和服务器中转都要处理验证码、签名和上游接口异常。
+研讨室预约模块覆盖场地查询、预约目的、日期时段、预约提交、订单列表、取消订单和门锁码。预约提交和取消订单属于写操作，直连本地实现与服务器中转都要处理验证码、签名和上游接口异常。
 
 ## 用户能力
 
@@ -13,7 +13,8 @@
 
 - UI 分为首页、空间选择、预约表单、订单列表和门锁码页。
 - `CgyyViewModel` 管理预约流程状态、表单存储和订单加载。
-- `CgyyApiBackend` 是 shared 层契约；`LocalCgyyApiBackend` 实现直连/WebVPN。
+- `CgyyApiBackend` 是 shared 层契约；`LocalCgyyApiBackend` 是直连/WebVPN 模式下的本地 backend。
+- 当前 `localCgyyUpstreamUrl()` 对 CGYY 始终返回原 URL，因此本地 CGYY 即使从 WebVPN 模式分发进入，也不会把 CGYY 上游 URL 包装成 WebVPN 地址。
 - `CgyyService` 和 `CgyyZhjsClient` 处理服务器中转、上游登录、验证码、目的类型和订单操作。
 - 预约类型为空或解析失败时，本地实现应保留 fallback 目的类型，避免直连模式无法选择预约类型。
 

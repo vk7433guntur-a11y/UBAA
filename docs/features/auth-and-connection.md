@@ -4,7 +4,8 @@
 
 ## 用户能力
 
-- 支持直连模式、WebVPN 模式和服务器中转模式。
+- Android、iOS、Desktop 支持直连模式、WebVPN 模式和服务器中转模式。
+- Web/Wasm 端只暴露服务器中转模式，启动时会自动保存 `SERVER_RELAY`。
 - 支持验证码获取、预登录、登录、登录状态检查、Token 刷新和退出登录。
 - 切换连接模式时会清理 Token、ClientId、本地会话、Cookie、本地上游客户端和学期缓存，避免跨模式复用旧状态。
 - Web/Wasm 平台只暴露服务器中转；Android、iOS、Desktop 可按平台能力使用本地连接模式。

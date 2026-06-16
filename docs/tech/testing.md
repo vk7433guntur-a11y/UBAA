@@ -28,7 +28,9 @@ npm run docs:build
 
 ## 文档验证
 
-docs 改动必须运行 `npm ci` 和 `npm run docs:build`。构建失败、死链或未提交 lockfile 都应阻止发布。
+CI 的 docs workflow 会运行 `npm ci` 和 `npm run docs:build`。本地如果只改 Markdown 且依赖已安装，可直接运行 `npm run docs:build`；修改 `package.json` 或 `package-lock.json` 时应先运行 `npm ci`。构建失败、死链或未提交 lockfile 都应阻止发布。文档涉及 Gradle 任务、共享契约或服务端路由说明时，再按影响面追加运行 `:shared:jvmTest`、`:server:test`、`:composeApp:jvmTest` 或 `spotlessCheck`。
+
+`verifyBhpanReadOnly` 只用于明确允许的只读 bhpan 认证探测；`uploadLatestReleaseToBhpan` 会真实删除并重新上传发布资产，不能作为常规验证命令。
 
 ## 来源文件
 

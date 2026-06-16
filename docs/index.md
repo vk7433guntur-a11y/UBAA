@@ -4,7 +4,7 @@ layout: home
 hero:
   name: UBAA
   text: 智慧北航 Remake
-  tagline: 面向北航学生的跨平台校园服务聚合客户端，一站式覆盖课表、考试、成绩、签到、评教等校园场景。
+  tagline: 面向北航学生的跨平台校园服务聚合客户端，一站式覆盖课表、考试、成绩、图书馆座位、签到、评教等校园场景。
   actions:
     - theme: brand
       text: 立刻下载
@@ -20,9 +20,9 @@ features:
   - title: 多端统一
     details: Android、iOS、Desktop、Web 共用 Kotlin Multiplatform 契约与 Compose Multiplatform UI，一套代码覆盖全部平台。
   - title: 校园服务聚合
-    details: 覆盖认证、课表、考试、成绩、博雅、空教室、SPOC、希冀、签到、研讨室、阳光打卡和评教，无需在多个系统间切换。
+    details: 覆盖认证、课表、考试、成绩、博雅、空教室、SPOC、希冀、图书馆座位、签到、研讨室、阳光打卡和评教，无需在多个系统间切换。
   - title: 三种连接模式
-    details: 客户端可在直连、WebVPN、服务器中转之间自由选择，按网络环境和平台能力自动适配。
+    details: Android、iOS 和 Desktop 可选择直连、WebVPN、服务器中转；Web/Wasm 端按平台能力固定使用服务器中转。
   - title: 全栈同仓
     details: shared 管理契约与本地实现，server 适配上游系统并维护会话，composeApp 提供跨平台体验。
   - title: 持续更新

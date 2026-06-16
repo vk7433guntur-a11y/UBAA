@@ -29,6 +29,7 @@ export default defineConfig({
             { text: '空教室查询', link: '/features/classroom' },
             { text: 'SPOC 作业', link: '/features/spoc' },
             { text: '希冀作业', link: '/features/judge' },
+            { text: '图书馆座位', link: '/features/libbook' },
             { text: '课程签到', link: '/features/signin' },
             { text: '研讨室预约', link: '/features/cgyy' },
             { text: '阳光打卡', link: '/features/ygdk' },

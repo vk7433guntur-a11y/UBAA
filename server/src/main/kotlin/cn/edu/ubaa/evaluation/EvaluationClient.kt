@@ -128,27 +128,6 @@ class EvaluationClient(
   }
 
   /**
-   * 获取当前学期代码（如 "2025-20261"）。
-   *
-   * @return 学期代码字符串，若获取失败返回 null。
-   */
-  suspend fun fetchCurrentXnxq(): String? {
-    return try {
-      val resp: SpocResult<List<JsonObject>> =
-          AppObservability.observeUpstreamRequest("evaluation", "fetch_current_xnxq") {
-            getClient().post("$baseUrl/component/queryXnxq").body()
-          }
-      val first = resp.content?.firstOrNull() ?: return null
-      val xn = first["xn"]?.toString()?.replace("\"", "") ?: ""
-      val xq = first["xq"]?.toString()?.replace("\"", "") ?: ""
-      "$xn$xq"
-    } catch (e: Exception) {
-      log.error("Failed to fetch xnxq", e)
-      null
-    }
-  }
-
-  /**
    * 获取用户的评教任务列表。
    *
    * @return 评教任务列表。
@@ -160,8 +139,6 @@ class EvaluationClient(
             getClient()
                 .get("$baseUrl/personnelEvaluation/listObtainPersonnelEvaluationTasks") {
                   parameter("yhdm", username)
-                  parameter("rwmc", "")
-                  parameter("sfyp", "0")
                   parameter("pageNum", "1")
                   parameter("pageSize", "10")
                 }
@@ -187,9 +164,6 @@ class EvaluationClient(
             getClient()
                 .get("$baseUrl/evaluationMethodSix/getQuestionnaireListToTask") {
                   parameter("rwid", rwid)
-                  parameter("sfyp", "0")
-                  parameter("pageNum", "1")
-                  parameter("pageSize", "999")
                 }
                 .body()
           }
@@ -201,40 +175,30 @@ class EvaluationClient(
   }
 
   /**
-   * 获取指定任务、问卷和学期下的**未评教**课程列表。
+   * 获取指定问卷下的当前待评课程列表。
    *
-   * 注意：参数 sfyp 控制过滤条件
-   * - sfyp=0：只返回未评教的课程
-   * - sfyp=1：只返回已评教的课程
-   * - 调用前会自动切换问卷模式（reviseQuestionnairePattern）
-   *
-   * @param rwid 任务 ID。
    * @param wjid 问卷 ID。
-   * @param xnxq 学期代码。
-   * @param msid 模式 ID，可选。
-   * @param sfyp 是否已评教，0=未评教，1=已评教。
-   * @return 课程列表（根据 sfyp 参数过滤）。
+   * @return 课程列表。默认不传学期和已评过滤参数，由上游返回最新待评列表。
    */
   suspend fun fetchCourses(
       rwid: String,
       wjid: String,
-      xnxq: String,
-      msid: String = "1",
-      sfyp: String = "0",
+      xnxq: String? = null,
+      msid: String? = null,
+      sfyp: String? = null,
   ): List<SpocCourse> {
     return try {
-      // 切换模式 (Revise Questionnaire Pattern)
-      reviseQuestionnairePattern(rwid, wjid, msid)
+      if (msid != null) {
+        reviseQuestionnairePattern(rwid, wjid, msid)
+      }
 
       val resp: SpocResult<List<SpocCourse>> =
           AppObservability.observeUpstreamRequest("evaluation", "fetch_courses") {
             getClient()
                 .get("$baseUrl/evaluationMethodSix/getRequiredReviewsData") {
-                  parameter("sfyp", sfyp)
+                  if (sfyp != null) parameter("sfyp", sfyp)
                   parameter("wjid", wjid)
-                  parameter("xnxq", xnxq)
-                  parameter("pageNum", "1")
-                  parameter("pageSize", "999")
+                  if (xnxq != null) parameter("xnxq", xnxq)
                 }
                 .body()
           }

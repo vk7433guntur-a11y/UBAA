@@ -55,7 +55,6 @@ internal class LocalEvaluationServiceBackend : EvaluationServiceBackend {
           return@runLocalEvaluationCall emptyResponse
         }
 
-        val xnxq = fetchCurrentXnxq() ?: return@runLocalEvaluationCall emptyResponse
         val tasks = fetchTasks()
         val courseMap = linkedMapOf<String, EvaluationCourse>()
 
@@ -64,21 +63,12 @@ internal class LocalEvaluationServiceBackend : EvaluationServiceBackend {
             val msid = questionnaire.msid?.takeIf { it.isNotBlank() } ?: "1"
             mergeCourses(
                 courseMap = courseMap,
-                courses = fetchCourses(task.rwid, questionnaire.wjid, xnxq, msid, sfyp = "0"),
+                courses = fetchCourses(task.rwid, questionnaire.wjid),
                 rwid = task.rwid,
                 wjid = questionnaire.wjid,
-                xnxq = xnxq,
+                xnxq = null,
                 msid = msid,
                 isEvaluated = false,
-            )
-            mergeCourses(
-                courseMap = courseMap,
-                courses = fetchCourses(task.rwid, questionnaire.wjid, xnxq, msid, sfyp = "1"),
-                rwid = task.rwid,
-                wjid = questionnaire.wjid,
-                xnxq = xnxq,
-                msid = msid,
-                isEvaluated = true,
             )
           }
         }
@@ -191,23 +181,6 @@ internal class LocalEvaluationServiceBackend : EvaluationServiceBackend {
     }
   }
 
-  private suspend fun fetchCurrentXnxq(): String? {
-    return try {
-      val response =
-          LocalUpstreamClientProvider.shared()
-              .post(localUpstreamUrl("https://spoc.buaa.edu.cn/pjxt/component/queryXnxq"))
-      val envelope = decodeEnvelope<List<JsonObject>>(response)
-      val first = envelope.content?.firstOrNull() ?: return null
-      val xn = first.string("xn").orEmpty()
-      val xq = first.string("xq").orEmpty()
-      if (xn.isBlank() || xq.isBlank()) null else "$xn$xq"
-    } catch (e: LocalEvaluationAuthenticationException) {
-      throw e
-    } catch (_: Exception) {
-      null
-    }
-  }
-
   private suspend fun fetchTasks(): List<LocalEvaluationTask> {
     return try {
       val authSession =
@@ -219,8 +192,6 @@ internal class LocalEvaluationServiceBackend : EvaluationServiceBackend {
               )
           ) {
             parameter("yhdm", authSession.user.schoolid.ifBlank { authSession.username })
-            parameter("rwmc", "")
-            parameter("sfyp", "0")
             parameter("pageNum", "1")
             parameter("pageSize", "10")
           }
@@ -241,9 +212,6 @@ internal class LocalEvaluationServiceBackend : EvaluationServiceBackend {
               )
           ) {
             parameter("rwid", rwid)
-            parameter("sfyp", "0")
-            parameter("pageNum", "1")
-            parameter("pageSize", "999")
           }
       decodeEnvelope<List<LocalEvaluationQuestionnaire>>(response).result.orEmpty()
     } catch (e: LocalEvaluationAuthenticationException) {
@@ -256,23 +224,15 @@ internal class LocalEvaluationServiceBackend : EvaluationServiceBackend {
   private suspend fun fetchCourses(
       rwid: String,
       wjid: String,
-      xnxq: String,
-      msid: String,
-      sfyp: String,
   ): List<JsonObject> {
     return try {
-      reviseQuestionnairePattern(rwid, wjid, msid)
       val response =
           LocalUpstreamClientProvider.shared().get(
               localUpstreamUrl(
                   "https://spoc.buaa.edu.cn/pjxt/evaluationMethodSix/getRequiredReviewsData"
               )
           ) {
-            parameter("sfyp", sfyp)
             parameter("wjid", wjid)
-            parameter("xnxq", xnxq)
-            parameter("pageNum", "1")
-            parameter("pageSize", "999")
           }
       decodeEnvelope<List<JsonObject>>(response).result.orEmpty()
     } catch (e: LocalEvaluationAuthenticationException) {
@@ -437,25 +397,27 @@ internal class LocalEvaluationServiceBackend : EvaluationServiceBackend {
       useSecondOption: Boolean,
   ): JsonObject {
     val questionType = question.string("tmlx") ?: "1"
+    val isChoiceQuestion = questionType == "1"
     val options = question["tmxxlist"]?.jsonArray ?: JsonArray(emptyList())
     val firstOptionId = options.firstOrNull()?.jsonObjectOrNull()?.get("tmxxid")
     val selectedOptionId =
-        if (useSecondOption && options.size > 1) {
+        if (isChoiceQuestion && useSecondOption && options.size > 1) {
           options.getOrNull(1)?.jsonObjectOrNull()?.get("tmxxid")
-        } else {
+        } else if (isChoiceQuestion) {
           firstOptionId
+        } else {
+          null
         }
 
     return buildJsonObject {
       put("sjly", "1")
-      put("stlx", questionType)
+      put("stlx", if (isChoiceQuestion) "1" else "6")
       put("wjid", course.wjid)
       put("wjssrwid", payload["wjssrwid"] ?: JsonNull)
-      if (questionType == "6") {
-        put("wjstctid", firstOptionId ?: JsonPrimitive(""))
-      } else {
-        put("wjstctid", "")
-      }
+      put(
+          "wjstctid",
+          if (isChoiceQuestion) JsonPrimitive("") else firstOptionId ?: JsonPrimitive(""),
+      )
       put("wjstid", question["tmid"] ?: JsonNull)
       putJsonArray("xxdalist") { if (selectedOptionId != null) add(selectedOptionId) }
     }
@@ -518,7 +480,7 @@ internal class LocalEvaluationServiceBackend : EvaluationServiceBackend {
       courses: List<JsonObject>,
       rwid: String,
       wjid: String,
-      xnxq: String,
+      xnxq: String?,
       msid: String,
       isEvaluated: Boolean,
   ) {
@@ -527,19 +489,20 @@ internal class LocalEvaluationServiceBackend : EvaluationServiceBackend {
       val bpdm = course.string("bpdm")
       val key = "${rwid}_${wjid}_${kcdm}_${bpdm.orEmpty()}"
       val existing = courseMap[key]
+      val evaluatedByUpstream = (course.int("ypjcs") ?: 0) > 0
       courseMap[key] =
           EvaluationCourse(
               id = key,
               kcmc = course.string("kcmc") ?: existing?.kcmc ?: "未知课程",
               bpmc = course.string("bpmc") ?: existing?.bpmc ?: "未知教师",
-              isEvaluated = isEvaluated || existing?.isEvaluated == true,
+              isEvaluated = isEvaluated || evaluatedByUpstream || existing?.isEvaluated == true,
               rwid = rwid,
               wjid = wjid,
               kcdm = kcdm,
               bpdm = bpdm ?: existing?.bpdm,
               pjrdm = course.string("pjrdm") ?: existing?.pjrdm,
               pjrmc = course.string("pjrmc") ?: existing?.pjrmc,
-              xnxq = xnxq,
+              xnxq = course.string("xnxq") ?: xnxq,
               msid = msid,
               zdmc = course.string("zdmc") ?: existing?.zdmc ?: "STID",
               ypjcs = course.int("ypjcs") ?: existing?.ypjcs ?: 0,
