@@ -1,0 +1,117 @@
+name: 自动签到
+
+on:
+  schedule:
+    # 北京时间周一至周五 7:00~22:59（UTC 23:00~14:59），每 10 分钟一次
+    - cron: '*/10 23,0-14 * * 1-5'
+  workflow_dispatch: # 可手动触发测试
+
+jobs:
+  auto-signin:
+    name: 课堂自动签到
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: 检查北京时间是否在上课时段
+        id: check-time
+        run: |
+          HOUR=$(TZ='Asia/Shanghai' date +%H)
+          echo "🕐 当前北京时间 $(TZ='Asia/Shanghai' date +%H:%M)"
+          if [ "$HOUR" -lt 7 ] || [ "$HOUR" -ge 22 ]; then
+            echo "不在上课时段（7:00-22:00），跳过本次"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "上课时段内，继续执行"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 登录 UBAA
+        id: login
+        if: steps.check-time.outputs.skip == 'false'
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST 'https://app.buaa.team/api/v1/auth/login' \
+            -H 'Content-Type: application/json' \
+            -d "{\"username\": \"${{ secrets.UBAA_USERNAME }}\", \"password\": \"${{ secrets.UBAA_PASSWORD }}\"}")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            TOKEN=$(echo "$BODY" | jq -r '.accessToken // empty')
+            if [ -n "$TOKEN" ]; then
+              echo "✅ 登录成功"
+              echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+            else
+              echo "❌ 响应中未找到 accessToken"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            fi
+          elif [ "$HTTP_CODE" = "422" ]; then
+            echo "⚠️ 需要验证码，跳过本次。用 App 登录一次即可恢复自动签到"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [ "$HTTP_CODE" = "401" ]; then
+            echo "❌ 登录失败：用户名或密码错误（请检查 GitHub Secrets）"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "❌ 登录异常（HTTP $HTTP_CODE），下次重试"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 查询并执行签到
+        if: steps.login.outputs.token != ''
+        env:
+          TOKEN: ${{ steps.login.outputs.token }}
+        run: |
+          NOW=$(TZ='Asia/Shanghai' date +%H:%M)
+          echo "=== 当前时间: $NOW ==="
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" 'https://app.buaa.team/api/v1/signin/today' \
+            -H "Authorization: Bearer ${TOKEN}")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ 获取课程列表失败（HTTP $HTTP_CODE）"
+            exit 0
+          fi
+
+          DATA=$(echo "$BODY" | jq '.data // empty')
+          if [ -z "$DATA" ] || [ "$DATA" = "[]" ]; then
+            echo "📭 今日无课程安排"
+            exit 0
+          fi
+
+          echo ""
+          echo "📋 今日课程："
+          echo "$BODY" | jq -r '.data[] | "  \(.courseName)  \(.classBeginTime)-\(.classEndTime)  \(if .signStatus == 1 then "✅ 已签到" else "⏳ 未签到" end)"'
+
+          echo ""
+          echo "=== 检查可签到的课程 ==="
+
+          # 遍历未签到课程，判断是否正在上课
+          echo "$BODY" | jq -c '.data[] | select(.signStatus == 0)' | while read -r course; do
+            COURSE_ID=$(echo "$course" | jq -r '.courseId')
+            COURSE_NAME=$(echo "$course" | jq -r '.courseName')
+            BEGIN_TIME=$(echo "$course" | jq -r '.classBeginTime')
+            END_TIME=$(echo "$course" | jq -r '.classEndTime')
+
+            # 时间比较（HH:mm 格式可直接用字符串比较）
+            if [[ "$NOW" > "$BEGIN_TIME" || "$NOW" == "$BEGIN_TIME" ]] && [[ "$NOW" < "$END_TIME" ]]; then
+              echo "📌 正在签到: $COURSE_NAME ($BEGIN_TIME-$END_TIME) ..."
+              SIGN_RESULT=$(curl -s -X POST "https://app.buaa.team/api/v1/signin/do?courseId=${COURSE_ID}" \
+                -H "Authorization: Bearer ${TOKEN}")
+              SIGN_MSG=$(echo "$SIGN_RESULT" | jq -r '.message // "未知"')
+              SIGN_OK=$(echo "$SIGN_RESULT" | jq -r '.success // false')
+              if [ "$SIGN_OK" = "true" ]; then
+                echo "  ✅ $SIGN_MSG"
+              else
+                echo "  ❌ $SIGN_MSG"
+              fi
+            else
+              echo "⏸️  跳过: $COURSE_NAME ($BEGIN_TIME-$END_TIME) — 未到上课时间或已下课"
+            fi
+          done
+
+          echo ""
+          echo "=== 本次签到完成 ==="
