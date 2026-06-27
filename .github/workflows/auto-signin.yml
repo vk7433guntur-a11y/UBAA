@@ -2,8 +2,18 @@ name: 自动签到
 
 on:
   schedule:
-    # 北京时间周一至周五 7:00~22:59（UTC 23:00~14:59），每 10 分钟一次
-    - cron: '*/10 23,0-14 * * 1-5'
+    # 一二节 (8:00开课 → 签到窗口 7:50~8:00)
+    - cron: '50,54,58 7 * * 1-5'
+    # 三四五节 (9:50开课 → 签到窗口 9:40~9:50)
+    - cron: '40,44,48 9 * * 1-5'
+    # 六七节 (14:00开课 → 签到窗口 13:50~14:00)
+    - cron: '50,54,58 13 * * 1-5'
+    # 八九十节 (15:50开课 → 签到窗口 15:40~15:50)
+    - cron: '40,44,48 15 * * 1-5'
+    # 十一十二节 (19:00开课 → 签到窗口 18:50~19:00)
+    - cron: '50,54,58 18 * * 1-5'
+    # 十三十四节 (20:40开课 → 签到窗口 20:30~20:40)
+    - cron: '30,34,38 20 * * 1-5'
   workflow_dispatch: # 可手动触发测试
 
 jobs:
@@ -13,18 +23,35 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: 检查北京时间是否在上课时段
+      - name: 检查是否在签到窗口
         id: check-time
         run: |
-          HOUR=$(TZ='Asia/Shanghai' date +%H)
-          echo "🕐 当前北京时间 $(TZ='Asia/Shanghai' date +%H:%M)"
-          if [ "$HOUR" -lt 7 ] || [ "$HOUR" -ge 22 ]; then
-            echo "不在上课时段（7:00-22:00），跳过本次"
+          MONTH=$(TZ='Asia/Shanghai' date +%m)
+          TIME=$(TZ='Asia/Shanghai' date +%H:%M)
+          echo "🕐 当前北京时间 $(TZ='Asia/Shanghai' date +%m月%d日 %H:%M)"
+
+          # 7~8 月暑假跳过
+          if [ "$MONTH" = "07" ] || [ "$MONTH" = "08" ]; then
+            echo "🏖️ 暑假期间（7~8 月），自动签到暂停"
             echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "上课时段内，继续执行"
-            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+
+          # 判断是否在 6 个签到窗口内
+          case "$TIME" in
+            07:5[0-9])               echo "📚 一二节签到窗口 (7:50~8:00)" ;;
+            09:4[0-9])               echo "📚 三四五节签到窗口 (9:40~9:50)" ;;
+            13:5[0-9])               echo "📚 六七节签到窗口 (13:50~14:00)" ;;
+            15:4[0-9])               echo "📚 八九十节签到窗口 (15:40~15:50)" ;;
+            18:5[0-9])               echo "📚 十一十二节签到窗口 (18:50~19:00)" ;;
+            20:3[0-9])               echo "📚 十三十四节签到窗口 (20:30~20:40)" ;;
+            *)
+              echo "当前不在签到窗口内，跳过"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
+          echo "skip=false" >> "$GITHUB_OUTPUT"
 
       - name: 登录 UBAA
         id: login
@@ -62,8 +89,9 @@ jobs:
         env:
           TOKEN: ${{ steps.login.outputs.token }}
         run: |
-          NOW=$(TZ='Asia/Shanghai' date +%H:%M)
-          echo "=== 当前时间: $NOW ==="
+          NOW_EPOCH=$(TZ='Asia/Shanghai' date +%s)
+          TODAY=$(TZ='Asia/Shanghai' date +%Y-%m-%d)
+          echo "=== 当前时间: $(TZ='Asia/Shanghai' date +%H:%M) ==="
 
           RESPONSE=$(curl -s -w "\n%{http_code}" 'https://app.buaa.team/api/v1/signin/today' \
             -H "Authorization: Bearer ${TOKEN}")
@@ -96,8 +124,10 @@ jobs:
             BEGIN_TIME=$(echo "$course" | jq -r '.classBeginTime')
             END_TIME=$(echo "$course" | jq -r '.classEndTime')
 
-            # 时间比较（HH:mm 格式可直接用字符串比较）
-            if [[ "$NOW" > "$BEGIN_TIME" || "$NOW" == "$BEGIN_TIME" ]] && [[ "$NOW" < "$END_TIME" ]]; then
+            # 判断开课时间是否在 10 分钟内（签到窗口期内）
+            CLASS_EPOCH=$(TZ='Asia/Shanghai' date -d "$TODAY $BEGIN_TIME" +%s 2>/dev/null || echo 0)
+            DIFF=$((CLASS_EPOCH - NOW_EPOCH))
+            if [ "$DIFF" -ge 0 ] && [ "$DIFF" -le 600 ]; then
               echo "📌 正在签到: $COURSE_NAME ($BEGIN_TIME-$END_TIME) ..."
               SIGN_RESULT=$(curl -s -X POST "https://app.buaa.team/api/v1/signin/do?courseId=${COURSE_ID}" \
                 -H "Authorization: Bearer ${TOKEN}")
