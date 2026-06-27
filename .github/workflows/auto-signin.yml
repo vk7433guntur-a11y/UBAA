@@ -28,7 +28,7 @@ jobs:
         run: |
           MONTH=$(TZ='Asia/Shanghai' date +%m)
           TIME=$(TZ='Asia/Shanghai' date +%H:%M)
-          echo "🕐 当前北京时间 $(TZ='Asia/Shanghai' date +%m月%d日 %H:%M)"
+          echo "🕐 当前北京时间 $(TZ='Asia/Shanghai' date '+%m月%d日 %H:%M')"
 
           # 7~8 月暑假跳过
           if [ "$MONTH" = "07" ] || [ "$MONTH" = "08" ]; then
