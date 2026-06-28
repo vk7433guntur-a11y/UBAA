@@ -1,7 +1,20 @@
 name: 自动签到
 
 on:
-  workflow_dispatch: # 手动触发测试
+  schedule:
+    # 一二节 (北京 7:50 = UTC 23:50)
+    - cron: '50 23 * * *'
+    # 三四五节 (北京 9:40 = UTC 1:40)
+    - cron: '40 1 * * *'
+    # 六七节 (北京 13:50 = UTC 5:50)
+    - cron: '50 5 * * *'
+    # 八九十节 (北京 15:40 = UTC 7:40)
+    - cron: '40 7 * * *'
+    # 十一十二节 (北京 18:50 = UTC 10:50)
+    - cron: '50 10 * * *'
+    # 十三十四节 (北京 20:30 = UTC 12:30)
+    - cron: '30 12 * * *'
+  workflow_dispatch: # 可手动触发测试
 
 jobs:
   auto-signin:
@@ -13,9 +26,9 @@ jobs:
       - name: 检查是否在签到窗口
         id: check-time
         run: |
-          MONTH=$(date +%m)
-          TIME=$(date +%H:%M)
-          echo "🕐 当前北京时间 $(date '+%m月%d日 %H:%M')"
+          MONTH=$(TZ='Asia/Shanghai' date +%m)
+          TIME=$(TZ='Asia/Shanghai' date +%H:%M)
+          echo "🕐 当前北京时间 $(TZ='Asia/Shanghai' date '+%m月%d日 %H:%M')"
 
           # 7~8 月暑假跳过
           if [ "$MONTH" = "07" ] || [ "$MONTH" = "08" ]; then
@@ -79,9 +92,9 @@ jobs:
         env:
           TOKEN: ${{ steps.login.outputs.token }}
         run: |
-          NOW_EPOCH=$(date +%s)
-          TODAY=$(date +%Y-%m-%d)
-          echo "=== 当前时间: $(date +%H:%M) ==="
+          NOW_EPOCH=$(TZ='Asia/Shanghai' date +%s)
+          TODAY=$(TZ='Asia/Shanghai' date +%Y-%m-%d)
+          echo "=== 当前时间: $(TZ='Asia/Shanghai' date +%H:%M) ==="
 
           RESPONSE=$(curl -s -w "\n%{http_code}" 'https://app.buaa.team/api/v1/signin/today' \
             -H "Authorization: Bearer ${TOKEN}")
@@ -113,7 +126,7 @@ jobs:
             BEGIN_TIME=$(echo "$course" | jq -r '.classBeginTime')
             END_TIME=$(echo "$course" | jq -r '.classEndTime')
 
-            CLASS_EPOCH=$(date -d "$TODAY $BEGIN_TIME" +%s 2>/dev/null || echo 0)
+            CLASS_EPOCH=$(TZ='Asia/Shanghai' date -d "$TODAY $BEGIN_TIME" +%s 2>/dev/null || echo 0)
             DIFF=$((CLASS_EPOCH - NOW_EPOCH))
             if [ "$DIFF" -ge 0 ] && [ "$DIFF" -le 600 ]; then
               echo "📌 正在签到: $COURSE_NAME ($BEGIN_TIME-$END_TIME) ..."
