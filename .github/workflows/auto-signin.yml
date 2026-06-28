@@ -1,20 +1,7 @@
 name: 自动签到
 
 on:
-  schedule:
-    # 一二节 (北京 7:50 = UTC 23:50)
-    - cron: '50 23 * * *'
-    # 三四五节 (北京 9:40 = UTC 1:40)
-    - cron: '40 1 * * *'
-    # 六七节 (北京 13:50 = UTC 5:50)
-    - cron: '50 5 * * *'
-    # 八九十节 (北京 15:40 = UTC 7:40)
-    - cron: '40 7 * * *'
-    # 十一十二节 (北京 18:50 = UTC 10:50)
-    - cron: '50 10 * * *'
-    # 十三十四节 (北京 20:30 = UTC 12:30)
-    - cron: '30 12 * * *'
-  workflow_dispatch: # 可手动触发测试
+  workflow_dispatch: # 手动触发测试
 
 jobs:
   auto-signin:
@@ -26,9 +13,9 @@ jobs:
       - name: 检查是否在签到窗口
         id: check-time
         run: |
-          MONTH=$(TZ='Asia/Shanghai' date +%m)
-          TIME=$(TZ='Asia/Shanghai' date +%H:%M)
-          echo "🕐 当前北京时间 $(TZ='Asia/Shanghai' date '+%m月%d日 %H:%M')"
+          MONTH=$(date +%m)
+          TIME=$(date +%H:%M)
+          echo "🕐 当前北京时间 $(date '+%m月%d日 %H:%M')"
 
           # 7~8 月暑假跳过
           if [ "$MONTH" = "07" ] || [ "$MONTH" = "08" ]; then
@@ -56,10 +43,13 @@ jobs:
       - name: 登录 UBAA
         id: login
         if: steps.check-time.outputs.skip == 'false'
+        env:
+          USERNAME: ${{ secrets.UBAA_USERNAME }}
+          PASSWORD: ${{ secrets.UBAA_PASSWORD }}
         run: |
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST 'https://app.buaa.team/api/v1/auth/login' \
             -H 'Content-Type: application/json' \
-            -d "{\"username\": \"${{ secrets.UBAA_USERNAME }}\", \"password\": \"${{ secrets.UBAA_PASSWORD }}\"}")
+            -d "{\"username\": \"${USERNAME}\", \"password\": \"${PASSWORD}\"}")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | sed '$d')
@@ -89,9 +79,9 @@ jobs:
         env:
           TOKEN: ${{ steps.login.outputs.token }}
         run: |
-          NOW_EPOCH=$(TZ='Asia/Shanghai' date +%s)
-          TODAY=$(TZ='Asia/Shanghai' date +%Y-%m-%d)
-          echo "=== 当前时间: $(TZ='Asia/Shanghai' date +%H:%M) ==="
+          NOW_EPOCH=$(date +%s)
+          TODAY=$(date +%Y-%m-%d)
+          echo "=== 当前时间: $(date +%H:%M) ==="
 
           RESPONSE=$(curl -s -w "\n%{http_code}" 'https://app.buaa.team/api/v1/signin/today' \
             -H "Authorization: Bearer ${TOKEN}")
@@ -117,15 +107,13 @@ jobs:
           echo ""
           echo "=== 检查可签到的课程 ==="
 
-          # 遍历未签到课程，判断是否正在上课
           echo "$BODY" | jq -c '.data[] | select(.signStatus == 0)' | while read -r course; do
             COURSE_ID=$(echo "$course" | jq -r '.courseId')
             COURSE_NAME=$(echo "$course" | jq -r '.courseName')
             BEGIN_TIME=$(echo "$course" | jq -r '.classBeginTime')
             END_TIME=$(echo "$course" | jq -r '.classEndTime')
 
-            # 判断开课时间是否在 10 分钟内（签到窗口期内）
-            CLASS_EPOCH=$(TZ='Asia/Shanghai' date -d "$TODAY $BEGIN_TIME" +%s 2>/dev/null || echo 0)
+            CLASS_EPOCH=$(date -d "$TODAY $BEGIN_TIME" +%s 2>/dev/null || echo 0)
             DIFF=$((CLASS_EPOCH - NOW_EPOCH))
             if [ "$DIFF" -ge 0 ] && [ "$DIFF" -le 600 ]; then
               echo "📌 正在签到: $COURSE_NAME ($BEGIN_TIME-$END_TIME) ..."
