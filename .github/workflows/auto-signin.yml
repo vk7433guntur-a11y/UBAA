@@ -38,7 +38,7 @@ jobs:
           USERNAME: ${{ secrets.UBAA_USERNAME }}
           PASSWORD: ${{ secrets.UBAA_PASSWORD }}
         run: |
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST 'https://app.buaa.team/api/v1/auth/login' \
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST 'https://ubaa.mofrp.top/api/v1/auth/login' \
             -H 'Content-Type: application/json' \
             -d "{\"username\": \"${USERNAME}\", \"password\": \"${PASSWORD}\"}")
 
@@ -74,7 +74,7 @@ jobs:
           TODAY=$(TZ='Asia/Shanghai' date +%Y-%m-%d)
           echo "=== 当前时间: $(TZ='Asia/Shanghai' date +%H:%M) ==="
 
-          RESPONSE=$(curl -s -w "\n%{http_code}" 'https://app.buaa.team/api/v1/signin/today' \
+          RESPONSE=$(curl -s -w "\n%{http_code}" 'https://ubaa.mofrp.top/api/v1/signin/today' \
             -H "Authorization: Bearer ${TOKEN}")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
@@ -108,7 +108,7 @@ jobs:
             DIFF=$((CLASS_EPOCH - NOW_EPOCH))
             if [ "$DIFF" -ge 0 ] && [ "$DIFF" -le 600 ]; then
               echo "📌 正在签到: $COURSE_NAME ($BEGIN_TIME-$END_TIME) ..."
-              SIGN_RESULT=$(curl -s -X POST "https://app.buaa.team/api/v1/signin/do?courseId=${COURSE_ID}" \
+              SIGN_RESULT=$(curl -s -X POST "https://ubaa.mofrp.top/api/v1/signin/do?courseId=${COURSE_ID}" \
                 -H "Authorization: Bearer ${TOKEN}")
               SIGN_MSG=$(echo "$SIGN_RESULT" | jq -r '.message // "未知"')
               SIGN_OK=$(echo "$SIGN_RESULT" | jq -r '.success // false')
